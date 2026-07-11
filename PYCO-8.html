@@ -3,503 +3,3140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Galaxy Farm - Cutesy Nebula</title>
+    <title>PYCO-8 Console Studio Pro</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.0/brython.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.0/brython_stdlib.min.js"></script>
+
     <style>
-        body { margin: 0; overflow: hidden; background: #05010a; touch-action: none; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; }
+        :root {
+            --bg: #09090b; --panel: #141418; --panel-light: #22222a;
+            --accent: #3b82f6; --accent-bright: #60a5fa; --text: #f4f4f5;
+            --gold: #eab308; --green: #10b981; --red: #ef4444;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg); color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+            overflow: hidden; display: flex; flex-direction: column; touch-action: none; 
+        }
         
-        /* UI OVERLAY */
-        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        #start-btn { padding: 15px 40px; font-size: 24px; background: #ff4081; border: none; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
-        #hud { position: absolute; top: 85px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        #inventory { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 12px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; font-weight: bold; pointer-events: none; }
-        #planet-name { font-size: 18px; font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 5px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
+        /* NAVIGATION BAR */
+        #nav { display: flex; background: var(--panel); border-bottom: 2px solid #1f1f23; z-index: 100; }
+        .tab { flex: 1; padding: 14px 0; text-align: center; font-weight: bold; cursor: pointer; font-size: 11px; letter-spacing: 0.8px; color: #a1a1aa; user-select: none; }
+        .tab.active { background: var(--panel-light); color: var(--accent-bright); border-bottom: 2px solid var(--accent); }
         
-        /* ARCHED CELESTIAL HUD */
-        #cycle-container { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 240px; height: 60px; z-index: 101; pointer-events: none; }
-        .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
-        #celestial-icon { position: absolute; font-size: 24px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -12px; margin-top: -12px; }
+        .view { display: none; flex: 1; position: relative; width: 100%; height: 100%; overflow-y: auto; box-sizing: border-box; }
+        .view.active { display: flex; flex-direction: column; }
 
-        /* CONTROLS */
-        .joystick-base { position: absolute; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: none; border: 2px solid rgba(255,255,255,0.2); z-index: 51; pointer-events: none; }
-        .joystick-knob { position: absolute; width: 32px; height: 32px; background: #fff; border-radius: 50%; left: 24px; top: 24px; opacity: 0.6; }
+        /* CODE TAB ENGINE SETUP */
+        .code-split-container { display: flex; flex: 1; flex-direction: row; height: 100%; width: 100%; overflow: hidden; }
+        .editor-wrapper { width: 65%; height: 100%; display: flex; flex-direction: column; transition: width 0.2s ease; }
+        #code-editor { width: 100%; flex: 1; background: #0c0c0e; color: #e4e4e7; font-family: monospace; font-size: 13px; border: none; padding: 14px; box-sizing: border-box; resize: none; outline: none; line-height: 1.5; }
         
-        #jump-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; background: rgba(255, 255, 255, 0.15); border: 4px solid white; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 90; backdrop-filter: blur(4px); cursor: pointer; user-select: none; }
+        .api-docked-panel { width: 35%; height: 100%; background: #111114; border-left: 2px solid #1f1f23; padding: 14px; overflow-y: auto; box-sizing: border-box; font-size: 11px; }
+        .api-entry { background: #18181b; border-left: 3px solid var(--accent); padding: 10px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
+        .api-cmd { color: var(--gold); font-weight: bold; font-family: monospace; }
+        .api-section { font-weight: bold; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--green); margin-top: 14px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #27272a; }
 
-        #tool-toggle { position: absolute; top: 20px; right: 20px; width: 60px; height: 60px; background: #fff; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 28px; z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
-        #tool-list { position: absolute; top: 90px; right: 25px; display: flex; flex-direction: column; gap: 12px; z-index: 109; transition: 0.3s; opacity: 0; transform: translateY(-20px); pointer-events: none; }
-        #tool-list.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
-        .tool { width: 50px; height: 50px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(0,0,0,0.8); color: white; cursor: pointer; }
-        .tool.active { background: #fff; color: #000; transform: scale(1.1); }
+        /* ACTION BAR UTILITIES */
+        .top-action-bar { background: var(--panel); padding: 10px; display: flex; gap: 8px; border-bottom: 1px solid #1f1f23; align-items: center; flex-wrap: wrap; }
+        .cart-info { font-size: 11px; font-weight: bold; color: #71717a; display: flex; align-items: center; gap: 6px; margin-right: auto; }
+
+        .btn { padding: 6px 12px; background: var(--panel-light); border: 1px solid #27272a; color: white; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; user-select: none; }
+        .btn.active { background: var(--accent); border-color: var(--accent-bright); }
+        .btn:active { opacity: 0.8; }
         
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; pointer-events: none; z-index: 100; display: none; }
+        /* DESIGN STUDIO CONTAINERS */
+        .editor-container { display: flex; flex-direction: column; padding: 12px; gap: 10px; align-items: center; width: 100%; box-sizing: border-box; }
+        
+        .transparent-canvas {
+            background-color: #111;
+            background-image: linear-gradient(45deg, #18181b 25%, transparent 25%), linear-gradient(-45deg, #18181b 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #18181b 75%), linear-gradient(-45deg, transparent 75%, #18181b 75%);
+            background-size: 16px 16px; border: 2px solid #27272a; border-radius: 8px; image-rendering: pixelated; width: 100%; max-width: 320px; aspect-ratio: 1/1;
+        }
+        
+        .color-tools { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 320px; }
+        #native-color-picker { -webkit-appearance: none; border: none; width: 32px; height: 32px; border-radius: 50%; background: none; cursor: pointer; }
+        #native-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        #native-color-picker::-webkit-color-swatch { border: 2px solid #3f3f46; border-radius: 50%; }
+        .palette-container { display: flex; gap: 6px; overflow-x: auto; flex: 1; }
+        .swatch { width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; border: 2px solid transparent; cursor: pointer; }
+        .swatch.active { border-color: white; transform: scale(1.1); }
 
-        .baaa-bubble { position: absolute; background: black; color: white; padding: 4px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; pointer-events: none; border: 2px solid white; transition: opacity 0.5s; z-index: 95; }
+        /* RESOURCE AND MATRIX LIBRARY REGISTRIES */
+        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; padding: 14px; box-sizing: border-box; width: 100%; }
+        .asset-card { background: var(--panel); border: 1px solid #27272a; border-radius: 8px; padding: 10px; text-align: center; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; }
+        .asset-card.selected { border-color: var(--accent); background: #0f172a; }
+        .asset-card canvas { background: #09090b; display: block; margin: 8px auto; image-rendering: pixelated; border-radius: 6px; }
+        .asset-meta { font-weight: bold; font-size: 10px; color: #a1a1aa; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* RUNTIME VIEWPORT PORTAL */
+        .play-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
+        #game-canvas { width: 100%; height: 100%; max-width: 100vw; max-height: 100%; object-fit: contain; image-rendering: pixelated; background: #050507; }
+
+        @media(max-width: 768px) {
+            .code-split-container { flex-direction: column; }
+            .editor-wrapper { width: 100% !important; height: 60%; }
+            .api-docked-panel { width: 100% !important; height: 40%; border-left: none; border-top: 2px solid #1f1f23; }
+        }
     </style>
 </head>
-<body>
-    <div id="start-screen">
-        <h1>Galaxy Farm</h1>
-        <button id="start-btn" onclick="startGame()">TAP TO START</button>
-        <p style="margin-top:15px; opacity: 0.7; font-size: 14px;">Sticks: Bottom Corners • Action: Top 75% Screen</p>
+<body onload="brython()">
+
+    <div id="nav">
+        <div class="tab" onclick="window.switchTab('code')">CODE</div>
+        <div class="tab active" onclick="window.switchTab('editor')">SPRITE</div>
+        <div class="tab" onclick="window.switchTab('assets')">RESOURCES</div>
+        <div class="tab" onclick="window.switchTab('map')">MAP</div>
+        <div class="tab" onclick="window.switchTab('play')">RUN GAME</div>
     </div>
 
-    <div id="cycle-container"><div id="celestial-icon">☀️</div></div>
-    <div id="inventory">🪓 Wood: 10<br>🪨 Stone: 5</div>
-    <div id="hud"><span id="planet-name">HOME GREEN</span><div id="status">🚜 PLOW</div></div>
-    <div id="crosshair"></div>
-    <div id="jump-btn">JUMP</div>
+    <div id="view-code" class="view">
+        <div class="top-action-bar">
+            <div class="cart-info">📟 <span id="cart-title-label" style="color:var(--green);">production_core.pyco8</span></div>
+            <button class="btn" style="background:#047857;" onclick="window.saveCartToLocalStorage()">💾 Quick Save</button>
+            <button class="btn" style="background:#1d4ed8;" onclick="window.loadCartFromLocalStorage()">📂 Quick Load</button>
+            <button class="btn" style="background:#6d28d9;" onclick="window.exportCartFile()">📤 Export</button>
+            <button class="btn" onclick="document.getElementById('cart-file-input').click()">📥 Import</button>
+            <input type="file" id="cart-file-input" style="display:none;" accept=".pyco8" onchange="window.importCartFile(event)">
+            <button class="btn" onclick="window.toggleApiPanel()" style="margin-left:8px; background:#3f3f46;">📖 Toggle Manual</button>
+        </div>
+        <div class="code-split-container">
+            <div class="editor-wrapper" id="editor-wrapper">
+<textarea id="code-editor" spellcheck="false">
+from browser import window
+import math
 
-    <div id="tool-toggle" onclick="toggleTools()">🎒</div>
-    <div id="tool-list">
-        <div class="tool active" id="tool-plow" onclick="selectTool('plow')">🚜</div>
-        <div class="tool" id="tool-seed" onclick="selectTool('seed')">🌱</div>
-        <div class="tool" id="tool-hammer" onclick="selectTool('hammer')">🔨</div>
-        <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
+engine = window.GameEngine
+
+# === PYCO-8 Platform Demo ===
+# Showcases: Audio, Collision, Triggers, Transitions, Combat
+
+# --- Audio: Define sound effects (Req 1.1) ---
+engine.define_sfx(0, {"waveform": "square", "frequency": 440,
+    "duration": 0.15, "envelope": {"attack": 0.01, "decay": 0.04,
+    "sustain": 0.3, "release": 0.06}})
+engine.define_sfx(1, {"waveform": "noise", "frequency": 200,
+    "duration": 0.3, "envelope": {"attack": 0.01, "decay": 0.1,
+    "sustain": 0.2, "release": 0.15}})
+engine.define_sfx(2, {"waveform": "triangle", "frequency": 660,
+    "duration": 0.25, "envelope": {"attack": 0.02, "decay": 0.08,
+    "sustain": 0.4, "release": 0.1}})
+
+# --- Collision: Register player entity (Req 4.1) ---
+engine.register_entity("player", 120, 150, 12, 12, True)
+
+# --- Triggers: Door zone and pickup (Req 6.1) ---
+engine.register_trigger("door1", 300, 40, 24, 24, "door",
+    {"target": "room2"})
+engine.register_trigger("chest1", 60, 220, 20, 20, "chest",
+    {"item": "potion", "qty": 1})
+
+# --- Combat: Create entities (Req 12.1) ---
+engine.create_combat_entity("hero", 100, 18, 6)
+engine.create_combat_entity("slime", 30, 10, 3)
+
+# Game state
+px, py = 120.0, 150.0
+msg = ""
+msg_timer = 0.0
+in_room2 = False
+dmg_dealt = 0
+
+def on_transition_done():
+    global in_room2, msg, msg_timer
+    in_room2 = not in_room2
+    msg = "ROOM 2" if in_room2 else "ROOM 1"
+    msg_timer = 2.0
+
+def update(dt, t):
+    global px, py, msg, msg_timer, dmg_dealt
+    state = engine.get_state()
+
+    if state == "SPLASH":
+        engine.clear_screen("#09090b")
+        engine.draw_text("PYCO-8 PLATFORM DEMO", 55, 90, 14, "#3b82f6")
+        engine.draw_text("Audio + Collision + Transitions", 50, 120, 9, "#71717a")
+        engine.draw_text("+ Combat Primitives", 100, 138, 9, "#71717a")
+        engine.draw_text("Press A to Start", 120, 180, 10, "#eab308")
+        if engine.is_btn_pressed("A"):
+            engine.set_state("PLAY")
+            engine.play_sfx(0)
+
+    elif state == "PLAY":
+        engine.clear_screen("#1a1a2e")
+
+        # Movement with collision resolution
+        jx = engine.get_joy_x()
+        jy = engine.get_joy_y()
+        speed = 80.0
+        dx = jx * speed * dt
+        dy = jy * speed * dt
+
+        if abs(dx) > 0.01 or abs(dy) > 0.01:
+            result = engine.move_entity("player", dx, dy)
+            px = result.x
+            py = result.y
+
+            # Check trigger events from movement
+            if hasattr(result, 'events'):
+                for ev in result.events:
+                    if ev.eventType == "door":
+                        if not engine.is_transitioning():
+                            engine.play_sfx(2)
+                            engine.transition("fade", 0.6,
+                                "on_transition_done")
+                    elif ev.eventType == "chest":
+                        engine.play_sfx(0)
+                        msg = "Found a potion!"
+                        msg_timer = 2.0
+
+        # Button A: Play SFX beep
+        if engine.is_btn_pressed("A"):
+            engine.play_sfx(0)
+
+        # Button B: Combat damage calculation demo
+        if engine.is_btn_pressed("B"):
+            dmg_dealt = engine.calculate_damage("hero", "slime")
+            engine.apply_damage("slime", dmg_dealt)
+            engine.play_sfx(1)
+            slime = engine.get_combat_entity("slime")
+            hp = slime.hp if slime else 0
+            msg = f"Hit slime for {dmg_dealt}! HP:{hp}"
+            msg_timer = 2.0
+
+        # Button X: Trigger screen transition
+        if engine.is_btn_pressed("X"):
+            if not engine.is_transitioning():
+                engine.play_sfx(2)
+                engine.transition("wipe_left", 0.5,
+                    "on_transition_done")
+
+        # Draw world map background
+        engine.draw_world_map()
+
+        # Draw trigger zone indicators
+        engine.draw_text("DOOR", 300, 38, 7, "#60a5fa")
+        engine.draw_text("CHEST", 58, 218, 7, "#eab308")
+
+        # Draw player sprite
+        engine.draw_stacked_sprite(0, px, py, 0.0, 0.0)
+
+        # HUD
+        room_label = "Room 2" if in_room2 else "Room 1"
+        engine.draw_text(f"Pos:{int(px)},{int(py)} [{room_label}]",
+            10, 16, 8, "#10b981")
+        engine.draw_text("A:SFX  B:Attack  X:Transition",
+            10, 285, 7, "#71717a")
+
+        # Flash message
+        if msg_timer > 0:
+            msg_timer -= dt
+            engine.draw_text(msg, 100, 150, 10, "#eab308")
+
+engine.set_loop(update)
+</textarea>
+            </div>
+            <div class="api-docked-panel" id="api-panel">
+                <div style="font-weight: bold; margin-bottom: 10px; color: var(--accent-bright); text-transform: uppercase;">Consolidated Python API Hooks</div>
+
+                <div class="api-section">Input & Rendering</div>
+                <div class="api-entry"><span class="api-cmd">engine.get_joy_x() / y()</span><br>Retrieves calculated float vector output arrays [-1.0 to 1.0].</div>
+                <div class="api-entry"><span class="api-cmd">engine.is_btn_pressed(button_string)</span><br>Queries active multi-touch state inputs for `"A"`, `"B"`, `"X"`, or `"Y"`.</div>
+                <div class="api-entry"><span class="api-cmd">engine.adjust_camera_yaw(radians)</span><br>Alters projection angle matrices dynamically.</div>
+                <div class="api-entry"><span class="api-cmd">engine.draw_stacked_sprite(id, x, y, z, rot)</span><br>Blits layered voxel slices to render 3D assets with accurate shading.</div>
+                <div class="api-entry"><span class="api-cmd">engine.draw_world_map()</span><br>Assembles background terrain matrices directly onto the active game engine frame.</div>
+
+                <div class="api-section">Audio</div>
+                <div class="api-entry"><span class="api-cmd">engine.play_sfx(id, volume=1.0)</span><br>Triggers a defined chiptune sound effect. Volume clamped to [0.0, 1.0]. Invalid IDs are silently ignored.</div>
+                <div class="api-entry"><span class="api-cmd">engine.play_music(pattern_id, loop=True)</span><br>Starts a music pattern from step 0. Stops any currently playing pattern first.</div>
+                <div class="api-entry"><span class="api-cmd">engine.stop_music()</span><br>Stops the music sequencer and resets step counter to 0. Safe to call when nothing is playing.</div>
+                <div class="api-entry"><span class="api-cmd">engine.set_master_volume(vol)</span><br>Sets master audio volume [0.0, 1.0]. Values outside range are clamped.</div>
+
+                <div class="api-section">Physics & Collision</div>
+                <div class="api-entry"><span class="api-cmd">engine.register_entity(id, x, y, w, h, solid=True)</span><br>Registers an entity with a bounding box for collision. Duplicate IDs overwrite previous registration.</div>
+                <div class="api-entry"><span class="api-cmd">engine.unregister_entity(id)</span><br>Removes an entity from the collision spatial index.</div>
+                <div class="api-entry"><span class="api-cmd">engine.move_entity(id, dx, dy)</span><br>Moves entity with wall-sliding collision resolution. Returns {x, y, collisions, events}.</div>
+                <div class="api-entry"><span class="api-cmd">engine.check_overlap(id_a, id_b)</span><br>Returns true if two registered entity bounding boxes share area. Symmetric and safe for invalid IDs.</div>
+                <div class="api-entry"><span class="api-cmd">engine.register_trigger(id, x, y, w, h, event_type, payload)</span><br>Defines a trigger zone that fires events when entities enter. Types: "door", "chest", "zone", "custom".</div>
+
+                <div class="api-section">Gameplay & Screens</div>
+                <div class="api-entry"><span class="api-cmd">engine.transition(type, duration, callback_name)</span><br>Plays a screen transition effect. Types: "fade", "wipe_left", "wipe_right", "iris_close", "iris_open".</div>
+                <div class="api-entry"><span class="api-cmd">engine.is_transitioning()</span><br>Returns true while a screen transition animation is active.</div>
+                <div class="api-entry"><span class="api-cmd">engine.register_screen(id, enter_fn, update_fn, exit_fn)</span><br>Registers a named game screen with lifecycle callbacks.</div>
+                <div class="api-entry"><span class="api-cmd">engine.switch_screen(id, transition_type)</span><br>Transitions to a registered screen, invoking exit/enter callbacks.</div>
+                <div class="api-entry"><span class="api-cmd">engine.get_current_screen()</span><br>Returns the ID of the currently active screen, or null if none.</div>
+                <div class="api-entry"><span class="api-cmd">engine.create_combat_entity(id, hp, attack, defense)</span><br>Registers a combat entity with RPG stats. HP [1, 99999], Attack/Defense [0, 99999].</div>
+                <div class="api-entry"><span class="api-cmd">engine.calculate_damage(attacker_id, defender_id)</span><br>Returns attack minus defense, floored at 1. Returns 0 for invalid IDs.</div>
+                <div class="api-entry"><span class="api-cmd">engine.apply_damage(entity_id, amount)</span><br>Reduces entity HP by amount, clamping at 0. Returns 0 for invalid IDs.</div>
+                <div class="api-entry"><span class="api-cmd">engine.get_combat_entity(id)</span><br>Returns {hp, attack, defense} for a registered combat entity.</div>
+                <div class="api-entry"><span class="api-cmd">engine.generate_dungeon(width, height, seed)</span><br>Returns a 2D grid of "wall"/"floor"/"corridor" cells. Deterministic from seed. Dimensions: 5–128.</div>
+                <div class="api-entry"><span class="api-cmd">engine.spawn_entities_in_region(template_id, count, region)</span><br>Places entities at floor cells in {x, y, w, h} region. Count: 1–256.</div>
+                <div class="api-entry"><span class="api-cmd">engine.set_timer(id, duration, callback_name, repeat)</span><br>Schedules a callback after duration seconds. Repeat=True for recurring. Max 64 timers.</div>
+                <div class="api-entry"><span class="api-cmd">engine.clear_timer(id)</span><br>Cancels a scheduled timer. Safe to call with non-existent IDs.</div>
+
+                <div class="api-section">Multiplayer (P2P)</div>
+                <div class="api-entry"><span class="api-cmd">engine.host_session(room_code)</span><br>Creates a WebRTC session with a 4–8 character alphanumeric room code. Supports up to 4 peers.</div>
+                <div class="api-entry"><span class="api-cmd">engine.join_session(room_code)</span><br>Connects to an active host via room code. Times out after 10 seconds on failure.</div>
+                <div class="api-entry"><span class="api-cmd">engine.disconnect()</span><br>Closes all peer connections and notifies connected peers.</div>
+                <div class="api-entry"><span class="api-cmd">engine.broadcast_state(entity_id, state_obj)</span><br>Sends entity state to all peers. Payload must be ≤1024 bytes serialized.</div>
+                <div class="api-entry"><span class="api-cmd">engine.send_message(peer_id, type, data)</span><br>Sends a direct message to a specific peer. Rate-limited to 30 msg/s per peer.</div>
+                <div class="api-entry"><span class="api-cmd">engine.get_connection_state()</span><br>Returns current state: "disconnected", "connecting", "hosting", or "joined".</div>
+            </div>
+        </div>
     </div>
 
-    <div id="joy-L-base" class="joystick-base"><div id="joy-L-knob" class="joystick-knob"></div></div>
-    <div id="joy-R-base" class="joystick-base"><div id="joy-R-knob" class="joystick-knob"></div></div>
-    
-    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
-    <script type="module">
-        import * as THREE from 'three';
+    <div id="view-editor" class="view active">
+        <div class="editor-container">
+            <div style="display:flex; width:100%; max-width:320px; justify-content:space-between; align-items:center;">
+                <select id="grid-size-select" onchange="window.resizeGrid(this.value)" class="btn">
+                    <option value="8">8x8 Grid</option>
+                    <option value="16" selected>16x16 Grid</option>
+                </select>
+                <div style="display:flex; gap:4px;">
+                    <button id="se-tool-pencil" class="btn active" onclick="window.setSpriteTool('pencil')">✏️</button>
+                    <button id="se-tool-eraser" class="btn" onclick="window.setSpriteTool('eraser')">❌</button>
+                </div>
+                <button class="btn" onclick="window.saveActiveWorkspace()" style="background:var(--accent);">Commit Asset</button>
+            </div>
 
-        // --- AUDIO ---
-        let audioCtx = null;
-        let nextNoteTime = 0, noteIndex = 0;
-        const melody = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00];
+            <div style="font-size: 11px; color:#a1a1aa; font-weight:bold;">Layer Slice: <span id="layer-label" style="color:var(--accent-bright)">0</span> / <span id="layer-total-label">8</span></div>
+            <canvas id="paint-canvas" width="320" height="320" class="transparent-canvas"></canvas>
 
-        window.startGame = () => {
-            document.getElementById('start-screen').style.display = 'none';
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            nextNoteTime = audioCtx.currentTime;
-            scheduleAudio();
-            if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                renderer.domElement.requestPointerLock();
-            }
-        };
+            <div style="display:flex; gap:6px; width:100%; max-width:320px; justify-content:center;">
+                <button class="btn" onclick="window.changeLayer(-1)">▼ DOWN</button>
+                <button class="btn" onclick="window.changeLayer(1)">▲ UP</button>
+                <button class="btn" onclick="window.pushNewStackLayer()" style="background:#059669;">[+] PUSH</button>
+                <button class="btn" onclick="window.popTopStackLayer()" style="background:#b91c1c;">[-] POP</button>
+            </div>
 
-        function scheduleAudio() {
-            if (!audioCtx) return;
-            while (nextNoteTime < audioCtx.currentTime + 0.1) {
-                playNote(melody[noteIndex % melody.length], nextNoteTime);
-                noteIndex++; nextNoteTime += 0.6;
-            }
-            requestAnimationFrame(scheduleAudio);
-        }
+            <div class="color-tools">
+                <input type="color" id="native-color-picker" onchange="window.updateSelectedColorSlot(this.value)">
+                <div class="palette-container" id="palette-swatch-row"></div>
+            </div>
 
-        function playNote(freq, time) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.015, time + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(time); osc.stop(time + 0.5);
-        }
+            <div style="font-size: 11px; font-weight: bold; color: #a1a1aa; margin-top: 6px;">Real-Time 3D Stack Preview</div>
+            <canvas id="preview-canvas" width="160" height="160" class="transparent-canvas" style="max-width:160px;"></canvas>
+        </div>
+    </div>
 
-        function playSFX(type) {
-            if (!audioCtx) return;
-            const t = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            if (type === 'jump') { osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(300, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'pop') { osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'thud') { osc.type = 'square'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'baaa') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(150, t + 0.3); gain.gain.setValueAtTime(0.05, t); }
-            gain.gain.linearRampToValueAtTime(0, t + 0.15);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(t); osc.stop(t + 0.3);
-        }
+    <div id="view-assets" class="view">
+        <div style="padding: 14px 14px 2px 14px; font-size:12px; font-weight:bold; color:var(--accent-bright);">PROJECT RESOURCE DIRECTORY</div>
+        <div class="asset-grid" id="asset-library-grid"></div>
+        <div style="padding:10px 14px;">
+            <button class="btn" style="background:#059669;" onclick="window.createNewAssetInLibrary()">+ Create New Empty Asset Blueprint</button>
+        </div>
+    </div>
 
-        // --- SETUP ---
-        let wood = 10, stone = 5, worldTime = 0;
-        const interactDistance = 6; 
-        window.activeTool = 'plow';
-        const planets = [], activeAnims = [], interactables = [], creatures = [], weeds = [];
-        let camPitch = 0.2, camZoom = 18, initialPinchDist = null;
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 5000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // --- CUTESY GALAXY GENERATOR ---
-        function createCutesyNebula() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024; canvas.height = 1024;
-            const ctx = canvas.getContext('2d');
+    <div id="view-map" class="view">
+        <div class="top-action-bar">
+            <button id="tool-pencil" class="btn active" onclick="window.setMapTool('pencil')">✏️ Draw Paint</button>
+            <button id="tool-eraser" class="btn" onclick="window.setMapTool('eraser')">❌ Erase Layer</button>
             
-            // Background deep space
-            ctx.fillStyle = '#0a0215';
-            ctx.fillRect(0, 0, 1024, 1024);
+            <select id="map-target-layer" class="btn" style="margin-left:auto;" onchange="window.renderMapEditorCanvas()">
+                <option value="ground" selected>GROUND LAYER</option>
+                <option value="object">SOLID OBJECT LAYER</option>
+            </select>
+            <button class="btn" onclick="window.clearMapGrid()" style="background:#b91c1c;">Clear Canvas</button>
+        </div>
+        <div style="text-align:center; padding:14px;">
+            <canvas id="map-canvas" width="320" height="320" style="background:#09090b; border:2px solid #27272a; border-radius:8px; image-rendering:pixelated; width:90%; max-width:320px;"></canvas>
+        </div>
+        <div style="padding:0 14px; font-size:11px; color:#a1a1aa; font-weight:bold;">Select Asset Brush to Paint:</div>
+        <div id="map-palette-row" class="asset-grid" style="grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));"></div>
+    </div>
 
-            const colors = ['rgba(255, 100, 200, 0.15)', 'rgba(150, 100, 255, 0.15)', 'rgba(50, 200, 255, 0.1)'];
-            for(let i = 0; i < 60; i++) {
-                const x = Math.random() * 1024;
-                const y = Math.random() * 1024;
-                const r = Math.random() * 300 + 100;
-                const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
-                grd.addColorStop(0, colors[Math.floor(Math.random() * colors.length)]);
-                grd.addColorStop(1, 'transparent');
-                ctx.fillStyle = grd;
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            }
-            return new THREE.CanvasTexture(canvas);
-        }
+    <div id="view-play" class="view">
+        <div class="play-container">
+            <canvas id="game-canvas" width="400" height="300"></canvas>
+        </div>
+    </div>
 
-        const nebGeo = new THREE.SphereGeometry(3000, 32, 32);
-        const nebMat = new THREE.MeshBasicMaterial({ map: createCutesyNebula(), side: THREE.BackSide });
-        scene.add(new THREE.Mesh(nebGeo, nebMat));
-
-        const celestialSun = new THREE.Mesh(new THREE.SphereGeometry(60, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
-        const celestialMoon = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 16), new THREE.MeshBasicMaterial({ color: 0xccccff }));
-        scene.add(celestialSun, celestialMoon);
-
-        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({color: 0xffffff, size: 2, transparent: true}));
-        const starPts = [];
-        for(let i=0; i<8000; i++) {
-            const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(1800 + Math.random()*1000);
-            starPts.push(v.x, v.y, v.z);
-        }
-        stars.geometry.setAttribute('position', new THREE.Float32BufferAttribute(starPts, 3));
-        scene.add(stars);
-
-        const sunLight = new THREE.DirectionalLight(0xfff5ee, 1.3); sunLight.castShadow = true;
-        const ambLight = new THREE.AmbientLight(0x404060, 0.4);
-        scene.add(sunLight, ambLight);
-
-        function addOutline(mesh, thickness = 0.1) {
-            const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide }));
-            outline.scale.multiplyScalar(1 + thickness);
-            mesh.add(outline);
-            return outline;
-        }
-
-        // --- PLANETS & PROPS ---
-        function createPlanet(x, y, z, radius, color, name, deco) {
-            const p = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 6), new THREE.MeshToonMaterial({ color }));
-            p.position.set(x, y, z); p.userData = { radius, name, type: 'planet' };
-            p.receiveShadow = true; scene.add(p); planets.push(p); addOutline(p, 0.02);
-
-            for(let i=0; i<deco; i++) {
-                const normal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
-                const pos = normal.clone().multiplyScalar(radius).add(p.position);
-                const isTree = Math.random() > 0.4;
-                const mesh = isTree ? 
-                    new THREE.Mesh(new THREE.ConeGeometry(radius*0.07, radius*0.25, 6), new THREE.MeshToonMaterial({color: 0x2e7d32})) :
-                    new THREE.Mesh(new THREE.DodecahedronGeometry(radius*0.06), new THREE.MeshToonMaterial({color: 0x757575}));
-                mesh.position.copy(pos);
-                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), normal);
-                mesh.userData = { type: 'prop', resource: isTree ? 'wood' : 'stone' };
-                mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
-            }
-            for(let i=0; i<8; i++) spawnWeed(p);
-            
-            for(let i=0; i<3; i++) {
-                const sheep = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), new THREE.MeshToonMaterial({color: 0xffffff}));
-                sheep.add(body); addOutline(body, 0.1);
-                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 4), new THREE.MeshBasicMaterial({color: 0x000000}));
-                const e1 = eye.clone(); e1.position.set(0.3, 0.2, 0.6);
-                const e2 = eye.clone(); e2.position.set(-0.3, 0.2, 0.6);
-                sheep.add(e1, e2);
-                sheep.userData = { planet: p, offset: new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize(), jumpTime: Math.random()*10, e1, e2 };
-                scene.add(sheep); creatures.push(sheep);
-            }
-            return p;
-        }
-
-        function spawnWeed(planet) {
-            const normal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
-            const pos = normal.clone().multiplyScalar(planet.userData.radius).add(planet.position);
-            const weed = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 4), new THREE.MeshToonMaterial({color: 0xb2ff59}));
-            weed.position.copy(pos); weed.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), normal);
-            weed.userData = { type: 'weed', planet: planet, phase: Math.random() * 10 };
-            scene.add(weed); interactables.push(weed); weeds.push(weed); addOutline(weed, 0.2);
-        }
-
-        const p1 = createPlanet(0, 0, 0, 15, 0x66cc66, "HOME GREEN", 18);
-        const p2 = createPlanet(100, 40, -100, 10, 0xcc6666, "RED WASTES", 8);
-        const p3 = createPlanet(-60, 60, -70, 16, 0x6666cc, "BLUE CRAGS", 12);
-        let currentPlanet = p1;
-
-        const player = new THREE.Group();
-        const pBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.7, 4, 8), new THREE.MeshToonMaterial({ color: 0xffaacc }));
-        pBody.position.y = 0.8; pBody.castShadow = true; player.add(pBody); scene.add(player); player.position.set(0, 20, 0);
-        addOutline(pBody, 0.1);
-
-        let velocity = new THREE.Vector3(), isGrounded = false, targetPlanet = null;
-        const jumpLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
-        scene.add(jumpLine);
-
-        function updateInventory() { document.getElementById('inventory').innerHTML = `🪓 Wood: ${wood}<br>🪨 Stone: ${stone}`; }
+    <script>
+        // --- 1. CORE SYSTEM STATES & INITIAL DATA TABLES ---
+        var cartFileName = "production_core.pyco8";
+        var gridSize = 16; var currentLayer = 0; var activeColorIndex = 1;
+        var editingAssetId = 0; var selectedMapAssetIndex = 0;
+        var spriteTool = 'pencil'; var mapTool = 'pencil';
         
-        // --- HUD ARCH ---
-        const cycleCont = document.getElementById('cycle-container');
-        for(let i=0; i<=4; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'hud-dot';
-            const size = (i===0||i===4) ? 6 : (i===2 ? 10 : 3);
-            dot.style.width = size+'px'; dot.style.height = size+'px';
-            const angle = (i/4) * Math.PI;
-            dot.style.left = (120 - Math.cos(angle) * 100 - size/2) + 'px';
-            dot.style.top = (50 - Math.sin(angle) * 40 - size/2) + 'px';
-            cycleCont.appendChild(dot);
-        }
+        var cameraYaw = 0.0; var camTiltX = 0.0; var camTiltY = 0.55;
+        var previewAngle = 0.0; var isDrawing = false;
 
-        // --- CONTROLS ---
-        const controls = { L: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, R: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, keys: {} };
-        window.toggleTools = () => { document.getElementById('tool-list').classList.toggle('open'); };
-        window.selectTool = (t) => {
-            window.activeTool = t; document.querySelectorAll('.tool').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tool-${t}`).classList.add('active');
-            document.getElementById('status').innerText = t.toUpperCase();
-            document.getElementById('tool-list').classList.remove('open');
+        var paletteColors = ['#000000', '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#ffffff', '#8b5cf6', '#ec4899', '#27272a', '#06b6d4'];
+        
+        // Active workspace scratchpad data layers
+        var stackData = Array(8).fill(0).map(function() { 
+            return Array(16).fill(0).map(function() { return Array(16).fill(0); }); 
+        });
+        
+        var assetLibrary = []; var assetCounter = 0;
+        var mapWidth = 16, mapHeight = 16;
+        
+        var mapGrid = {
+            ground: Array(mapHeight).fill(0).map(function() { return Array(mapWidth).fill(-1); }),
+            object: Array(mapHeight).fill(0).map(function() { return Array(mapWidth).fill(-1); })
         };
 
-        window.addEventListener('keydown', (e) => controls.keys[e.code] = true);
-        window.addEventListener('keyup', (e) => controls.keys[e.code] = false);
-        window.addEventListener('wheel', (e) => camZoom = Math.max(8, Math.min(45, camZoom + e.deltaY * 0.02)));
+        // Screen Overlay Touch Input Configuration Maps
+        var activeTouches = {};
+        var joystickState = { cx: 70, cy: 230, r: 35, handleX: 70, handleY: 230, active: false, touchId: null, outputX: 0, outputY: 0 };
+        var buttonLayout = {
+            'A': { x: 355, y: 245, r: 18, pressed: false },
+            'B': { x: 315, y: 255, r: 18, pressed: false },
+            'X': { x: 345, y: 205, r: 18, pressed: false },
+            'Y': { x: 305, y: 215, r: 18, pressed: false }
+        };
 
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
-                renderer.domElement.requestPointerLock();
-            } else { handleInteraction(e.clientX, e.clientY); }
-        });
-
-        document.addEventListener('pointerlockchange', () => document.getElementById('crosshair').style.display = document.pointerLockElement ? 'block' : 'none');
-        window.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === renderer.domElement) {
-                player.rotateY(-e.movementX * 0.003);
-                camPitch = Math.max(-0.6, Math.min(0.8, camPitch - e.movementY * 0.003));
+        function bootstrapDefaultVoxelAssets() {
+            // Asset 0: Character Token Matrix
+            var chr = Array(8).fill(0).map(function() { return Array(16).fill(0).map(function() { return Array(16).fill(0); }); });
+            for(var z=0; z<8; z++) {
+                for(var i=4; i<12; i++) { for(var j=4; j<12; j++) chr[z][i][j] = (z < 3 ? 2 : z > 6 ? 5 : 1); }
             }
-        });
-
-        window.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-            for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
-                    if(t.target.id === 'jump-btn') handleJump(); continue;
-                }
-                const x = t.clientX, y = t.clientY;
-                if (y > window.innerHeight * 0.75) {
-                    if (x < window.innerWidth * 0.35) {
-                        controls.L.active = true; controls.L.id = t.identifier; controls.L.origin = {x, y}; controls.L.curr = {x, y};
-                        const base = document.getElementById('joy-L-base');
-                        base.style.display = 'block'; base.style.left = `${x-40}px`; base.style.top = `${y-40}px`;
-                    } else if (x > window.innerWidth * 0.65) {
-                        controls.R.active = true; controls.R.id = t.identifier; controls.R.origin = {x, y}; controls.R.curr = {x, y};
-                        const base = document.getElementById('joy-R-base');
-                        base.style.display = 'block'; base.style.left = `${x-40}px`; base.style.top = `${y-40}px`;
-                    }
-                } else { handleInteraction(x, y); }
+            // Asset 1: Scenery Structural Column
+            var prop = Array(12).fill(0).map(function() { return Array(16).fill(0).map(function() { return Array(16).fill(0); }); });
+            for(var z=0; z<12; z++) {
+                for(var i=5; i<11; i++) { for(var j=5; j<11; j++) prop[z][i][j] = (z === 11 ? 4 : 3); }
             }
-        }, {passive: false});
-
-        window.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialPinchDist) {
-                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                camZoom = Math.max(8, Math.min(45, camZoom + (initialPinchDist - dist) * 0.05));
-                initialPinchDist = dist;
-            }
-            for(let t of e.changedTouches) {
-                if (controls.L.active && t.identifier === controls.L.id) {
-                    controls.L.curr = {x: t.clientX, y: t.clientY};
-                    const dx = t.clientX - controls.L.origin.x, dy = t.clientY - controls.L.origin.y;
-                    const d = Math.min(Math.hypot(dx, dy), 40); const ang = Math.atan2(dy, dx);
-                    document.getElementById('joy-L-knob').style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
-                }
-                if (controls.R.active && t.identifier === controls.R.id) {
-                    const dx = t.clientX - controls.R.curr.x, dy = t.clientY - controls.R.curr.y;
-                    player.rotateY(-dx * 0.008); camPitch = Math.max(-0.6, Math.min(0.8, camPitch - dy * 0.008));
-                    controls.R.curr = {x: t.clientX, y: t.clientY};
-                    const bx = t.clientX - controls.R.origin.x, by = t.clientY - controls.R.origin.y;
-                    const bd = Math.min(Math.hypot(bx, by), 40); const ba = Math.atan2(by, bx);
-                    document.getElementById('joy-R-knob').style.transform = `translate(${Math.cos(ba)*bd}px, ${Math.sin(ba)*bd}px)`;
-                }
-            }
-        }, {passive: false});
-
-        window.addEventListener('touchend', (e) => {
-            for(let t of e.changedTouches) {
-                if (controls.L.active && t.identifier === controls.L.id) { controls.L.active = false; document.getElementById('joy-L-base').style.display = 'none'; }
-                if (controls.R.active && t.identifier === controls.R.id) { controls.R.active = false; document.getElementById('joy-R-base').style.display = 'none'; }
-            }
-            if (e.touches.length < 2) initialPinchDist = null;
-        });
-
-        // --- INTERACTION ---
-        function handleInteraction(x, y) {
-            const mouse = new THREE.Vector2();
-            if (document.pointerLockElement) { mouse.set(0, 0); }
-            else { mouse.set((x/window.innerWidth)*2-1, -(y/window.innerHeight)*2+1); }
-
-            const ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
-            const iHits = ray.intersectObjects(interactables, true);
-            const pHits = ray.intersectObject(currentPlanet);
+            assetLibrary.push({ id: assetCounter++, name: "Raider Core", size: 16, data: chr });
+            assetLibrary.push({ id: assetCounter++, name: "Obelisk Column", size: 16, data: prop });
             
-            const hit = iHits[0];
-            if (hit && hit.point.distanceTo(player.position) < interactDistance) {
-                const obj = hit.object;
-                const type = obj.userData.type || obj.parent?.userData?.type;
-                if (window.activeTool === 'hammer') {
-                    const target = (type === 'fence') ? (obj.parent || obj) : obj;
-                    if (type === 'prop') obj.userData.resource === 'wood' ? wood++ : stone++;
-                    if (type === 'fence') wood++;
-                    activeAnims.push({ obj: target, time: 0, type: 'destroy' });
-                    interactables.splice(interactables.indexOf(target), 1); playSFX('pop'); updateInventory();
-                } else if (window.activeTool === 'fence' && type === 'fence') {
-                    (obj.parent || obj).rotateY(Math.PI/4); playSFX('thud');
-                } else if (window.activeTool === 'seed' && type === 'mound') {
-                    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5), new THREE.MeshToonMaterial({color: 0x76ff03}));
-                    s.position.copy(obj.position); s.quaternion.copy(obj.quaternion); s.translateY(0.4);
-                    s.scale.set(0,0,0); scene.add(s); addOutline(s, 0.2);
-                    s.userData = { type: 'seed' }; interactables.push(s);
-                    activeAnims.push({ obj: s, time: 0, targetY: 1, targetXZ: 1, type: 'pop' }); playSFX('pop');
-                }
-            } else if (pHits[0] && pHits[0].point.distanceTo(player.position) < interactDistance) {
-                const p = pHits[0].object;
-                const norm = pHits[0].face.normal.clone().transformDirection(p.matrixWorld).normalize();
-                const pos = norm.clone().multiplyScalar(p.userData.radius).add(p.position);
-                let overlap = false;
-                for(let i of interactables) { if(i.position.distanceTo(pos) < (window.activeTool === 'fence' ? 0.5 : 0.85)) overlap = true; }
-                if (!overlap) {
-                    if (window.activeTool === 'plow') {
-                        const mound = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 8), new THREE.MeshToonMaterial({ color: 0x8d6e63 }));
-                        mound.position.copy(pos).add(norm.clone().multiplyScalar(0.05));
-                        mound.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), norm);
-                        mound.userData = { type: 'mound', planet: p };
-                        mound.scale.set(0,0,0); scene.add(mound); interactables.push(mound); addOutline(mound, 0.05);
-                        activeAnims.push({ obj: mound, time: 0, targetY: 0.2, targetXZ: 1.0, type: 'pop' }); playSFX('pop');
-                    } else if (window.activeTool === 'fence' && wood > 0) {
-                        wood--; updateInventory();
-                        const fence = new THREE.Group();
-                        const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1, 0.25), new THREE.MeshToonMaterial({color: 0x5d4037}));
-                        const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.1), new THREE.MeshToonMaterial({color: 0x795548}));
-                        const p1 = post.clone(); p1.position.x = -0.6; const p2 = post.clone(); p2.position.x = 0.6; rail.position.y = 0.3;
-                        fence.add(p1, p2, rail); fence.position.copy(pos);
-                        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), norm);
-                        const look = player.position.clone().sub(pos).projectOnPlane(norm).normalize();
-                        const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
-                        fence.quaternion.copy(q); fence.userData = { type: 'fence', planet: p };
-                        fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
-                        activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' }); playSFX('thud');
-                    }
+            // Build simple default starting background scene map
+            for(var r=0; r<mapHeight; r++) {
+                for(var c=0; c<mapWidth; c++) {
+                    if((r + c) % 2 === 0) mapGrid.ground[r][c] = 1; 
                 }
             }
+            // Populate workspace scratchpad buffer
+            stackData = JSON.parse(JSON.stringify(chr));
+        }
+        bootstrapDefaultVoxelAssets();
+
+        // --- 2. COLLAPSIBLE VIEW MAP INTERRUPTS ---
+        function toggleApiPanel() {
+            var panel = document.getElementById('api-panel'); var wrapper = document.getElementById('editor-wrapper');
+            if(panel.style.display === 'none') { panel.style.display = 'block'; wrapper.style.width = '65%'; }
+            else { panel.style.display = 'none'; wrapper.style.width = '100%'; }
         }
 
-        function handleJump() {
-            if (!isGrounded) return;
-            const up = player.position.clone().sub(currentPlanet.position).normalize();
-            if (targetPlanet) velocity.copy(targetPlanet.position.clone().sub(player.position).normalize().multiplyScalar(player.position.distanceTo(targetPlanet.position) * 0.052)).addScaledVector(up, 0.3);
-            else velocity.copy(up).multiplyScalar(0.7);
-            isGrounded = false; playSFX('jump');
-        }
-
-        function showBaaaBubble(pos) {
-            const bubble = document.createElement('div');
-            bubble.className = 'baaa-bubble'; bubble.innerText = 'Baaa!';
-            document.body.appendChild(bubble);
-            const vector = pos.clone().project(camera);
-            bubble.style.left = `${(vector.x + 1) / 2 * window.innerWidth}px`;
-            bubble.style.top = `${(-vector.y + 1) / 2 * window.innerHeight - 30}px`;
-            setTimeout(() => { bubble.style.opacity = 0; setTimeout(() => bubble.remove(), 500); }, 1000);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            worldTime += 0.0004; 
-            const cyclePos = worldTime % (Math.PI * 2);
+        function switchTab(id) {
+            document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+            document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+            document.getElementById('view-'+id).classList.add('active');
             
-            const icon = document.getElementById('celestial-icon');
-            const hudAngle = (cyclePos % Math.PI);
-            icon.style.left = (120 - Math.cos(hudAngle) * 100) + 'px';
-            icon.style.top = (50 - Math.sin(hudAngle) * 40) + 'px';
-            const cosVal = Math.cos(cyclePos);
-            const isDay = cosVal > -0.2;
-            icon.innerText = isDay ? '☀️' : '🌙';
-            icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #fff)';
-
-            const dayFactor = isDay ? Math.max(0, Math.sin(cyclePos)) : 0;
-            sunLight.position.set(Math.cos(cyclePos)*1000, Math.sin(cyclePos)*1000, 0);
-            sunLight.intensity = Math.max(0.1, dayFactor + 0.6);
-            ambLight.intensity = Math.max(0.2, (dayFactor + 1) * 0.3);
-            stars.material.opacity = Math.max(0.3, 1 - sunLight.intensity);
-
-            celestialSun.position.set(Math.cos(cyclePos)*1200, Math.sin(cyclePos)*1200, 0);
-            celestialMoon.position.set(Math.cos(cyclePos + Math.PI)*1200, Math.sin(cyclePos + Math.PI)*1200, 0);
-
-            activeAnims.forEach((a, i) => {
-                a.time += 0.08;
-                if (a.type === 'pop') {
-                    const b = Math.sin(Math.min(a.time * 5, Math.PI));
-                    a.obj.scale.set(a.targetXZ * b, a.targetY * b, a.targetXZ * b);
-                    if(a.time > 0.8) { a.obj.scale.set(a.targetXZ, a.targetY, a.targetXZ); activeAnims.splice(i, 1); }
-                } else if (a.type === 'destroy') {
-                    const s = Math.max(0, 1 - a.time); a.obj.scale.set(s,s,s);
-                    if(s <= 0) { scene.remove(a.obj); activeAnims.splice(i,1); }
-                }
+            // Match tab trigger hooks
+            document.querySelectorAll('.tab').forEach(function(t) {
+                if(t.getAttribute('onclick').indexOf(id) !== -1) t.classList.add('active');
             });
 
-            creatures.forEach(s => {
-                s.userData.jumpTime += 0.05; 
-                const hop = Math.sin(s.userData.jumpTime * 3); const hopHeight = Math.max(0, hop) * 0.6;
-                s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight).add(s.userData.planet.position), 0.2);
-                s.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), s.userData.offset);
-                const stretch = 1 + Math.max(0, hop) * 0.3; const squish = 1 - Math.max(0, hop) * 0.15;
-                s.scale.set(squish, stretch, squish);
-                if(Math.random() > 0.998) { playSFX('baaa'); showBaaaBubble(s.position); }
-            });
+            if(id === 'play') hotSwapVirtualMachinePipeline();
+            if(id === 'assets') renderAssetLibrary();
+            if(id === 'map') { renderMapPaletteBrushes(); renderMapEditorCanvas(); }
+            if(id === 'editor') { renderPaintCanvas(); updateLayerLabels(); }
+        }
 
-            weeds.forEach(w => { w.userData.phase += 0.05; const s = 1 + Math.sin(w.userData.phase) * 0.1; w.scale.set(s,s,s); });
+        // --- 3. STORAGE I/O HARD CORE SYSTEMS ---
 
-            let closest = currentPlanet, dMin = Infinity;
-            planets.forEach(p => { const d = player.position.distanceTo(p.position); if(d < dMin) { dMin = d; closest = p; }});
-            if (closest !== currentPlanet) { currentPlanet = closest; document.getElementById('planet-name').innerText = currentPlanet.userData.name; }
+        // Cartridge Validation (Req 11.3, 11.5, 11.6)
+        function validateCartridgeData(cart) {
+            var errors = [];
+            var VALID_WAVEFORMS = ["square", "triangle", "sawtooth", "noise", "pulse"];
 
-            const up = player.position.clone().sub(currentPlanet.position).normalize();
-            if (player.position.distanceTo(currentPlanet.position) - currentPlanet.userData.radius <= 0.1 && velocity.dot(up) <= 0) {
-                isGrounded = true; velocity.set(0,0,0); player.position.copy(up.clone().multiplyScalar(currentPlanet.userData.radius).add(currentPlanet.position));
-            } else { isGrounded = false; velocity.addScaledVector(up, -0.015); }
-            player.position.add(velocity);
+            // Validate audio section
+            if (cart.audio) {
+                // Validate SFX entries
+                if (cart.audio.sfx && Array.isArray(cart.audio.sfx)) {
+                    var seenIds = {};
+                    cart.audio.sfx.forEach(function(sfx, index) {
+                        var prefix = "audio.sfx[" + index + "]";
 
-            let mX = 0, mY = 0;
-            if (controls.L.active) { 
-                mX = Math.max(-1, Math.min(1, (controls.L.curr.x - controls.L.origin.x)/40)); mY = Math.max(-1, Math.min(1, (controls.L.curr.y - controls.L.origin.y)/40)); 
+                        // ID must be a non-negative integer
+                        if (typeof sfx.id !== "number" || sfx.id < 0 || Math.floor(sfx.id) !== sfx.id) {
+                            errors.push({ section: "audio", field: prefix + ".id", message: "SFX ID must be a non-negative integer" });
+                        } else {
+                            if (seenIds[sfx.id]) {
+                                errors.push({ section: "audio", field: prefix + ".id", message: "Duplicate SFX ID: " + sfx.id });
+                            }
+                            seenIds[sfx.id] = true;
+                        }
+
+                        // Waveform must be valid
+                        if (VALID_WAVEFORMS.indexOf(sfx.waveform) === -1) {
+                            errors.push({ section: "audio", field: prefix + ".waveform", message: "Invalid waveform: " + sfx.waveform + ". Must be one of: " + VALID_WAVEFORMS.join(", ") });
+                        }
+
+                        // Frequency must be in [20, 20000]
+                        if (typeof sfx.frequency !== "number" || sfx.frequency < 20 || sfx.frequency > 20000) {
+                            errors.push({ section: "audio", field: prefix + ".frequency", message: "Frequency must be in [20, 20000] Hz" });
+                        }
+
+                        // Duration must be in [0.01, 10.0]
+                        if (typeof sfx.duration !== "number" || sfx.duration < 0.01 || sfx.duration > 10.0) {
+                            errors.push({ section: "audio", field: prefix + ".duration", message: "Duration must be in [0.01, 10.0] seconds" });
+                        }
+
+                        // Envelope values must be in [0.0, 5.0]
+                        if (sfx.envelope && typeof sfx.envelope === "object") {
+                            ["attack", "decay", "sustain", "release"].forEach(function(param) {
+                                if (typeof sfx.envelope[param] !== "number" || sfx.envelope[param] < 0.0 || sfx.envelope[param] > 5.0) {
+                                    errors.push({ section: "audio", field: prefix + ".envelope." + param, message: "Envelope " + param + " must be in [0.0, 5.0]" });
+                                }
+                            });
+                        } else {
+                            errors.push({ section: "audio", field: prefix + ".envelope", message: "Envelope must be an object with attack, decay, sustain, release" });
+                        }
+                    });
+                }
+
+                // Validate pattern entries
+                if (cart.audio.patterns && Array.isArray(cart.audio.patterns)) {
+                    cart.audio.patterns.forEach(function(pat, index) {
+                        var prefix = "audio.patterns[" + index + "]";
+
+                        // Tempo must be in [30, 300]
+                        if (typeof pat.tempo !== "number" || pat.tempo < 30 || pat.tempo > 300) {
+                            errors.push({ section: "audio", field: prefix + ".tempo", message: "Tempo must be in [30, 300] BPM" });
+                        }
+
+                        // Channels must be in [1, 4]
+                        if (typeof pat.channels !== "number" || pat.channels < 1 || pat.channels > 4 || Math.floor(pat.channels) !== pat.channels) {
+                            errors.push({ section: "audio", field: prefix + ".channels", message: "Channels must be an integer in [1, 4]" });
+                        }
+                    });
+                }
+            }
+
+            return { valid: errors.length === 0, errors: errors };
+        }
+
+        function validateSection(cart, sectionName) {
+            // Validate just a specific section by creating a temporary cart with only that section
+            var tempCart = {};
+            tempCart[sectionName] = cart[sectionName];
+            return validateCartridgeData(tempCart);
+        }
+
+        function assembleCartridgeBundle() {
+            var cart = {
+                cartVersion: "2.0.0", filename: cartFileName,
+                code: document.getElementById('code-editor').value,
+                palette: paletteColors, assets: assetLibrary, map: mapGrid,
+                audio: {
+                    sfx: audioSynth.sfxDefinitions ? Array.from(audioSynth.sfxDefinitions.entries()).map(function(entry) { return {id: entry[0], waveform: entry[1].waveform, frequency: entry[1].frequency, duration: entry[1].duration, envelope: entry[1].envelope, pitchSlide: entry[1].pitchSlide, vibratoSpeed: entry[1].vibratoSpeed, vibratoDepth: entry[1].vibratoDepth}; }) : [],
+                    patterns: audioSynth.patterns ? Array.from(audioSynth.patterns.entries()).map(function(entry) { return {id: entry[0], channels: entry[1].channels, tempo: entry[1].tempo, noteData: entry[1].noteData}; }) : []
+                },
+                physics: {
+                    entityDefs: collisionEngine.entities ? Array.from(collisionEngine.entities.values()).map(function(e) { return {id: e.id, width: e.w, height: e.h, isSolid: e.solid}; }) : [],
+                    triggers: collisionEngine.triggers ? Array.from(collisionEngine.triggers.values()).map(function(t) { return {id: t.id, x: t.x, y: t.y, width: t.w, height: t.h, eventType: t.eventType, payload: t.payload}; }) : []
+                },
+                gameplay: {
+                    screens: gameplayTemplates._screens ? Array.from(gameplayTemplates._screens.keys()) : [],
+                    combatEntities: gameplayTemplates._combatEntities ? Array.from(gameplayTemplates._combatEntities.entries()).map(function(entry) { return {id: entry[0], hp: entry[1].hp, attack: entry[1].attack, defense: entry[1].defense}; }) : [],
+                    timers: []
+                }
+            };
+
+            // Validate before returning (Req 11.6)
+            var validation = validateCartridgeData(cart);
+            if (!validation.valid) {
+                var error = new Error("Cartridge validation failed");
+                error.validationErrors = validation.errors;
+                throw error;
+            }
+
+            return cart;
+        }
+        function unpackCartridgeBundle(cart) {
+            if(!cart || !cart.code) return false;
+            if(cart.filename) { cartFileName = cart.filename; document.getElementById('cart-title-label').innerText = cartFileName; }
+            document.getElementById('code-editor').value = cart.code;
+            if(cart.palette) paletteColors = cart.palette;
+            if(cart.assets) { assetLibrary = cart.assets; assetCounter = assetLibrary.length; }
+            if(cart.map) mapGrid = cart.map;
+            
+            // Backward compatibility: default missing sections for v1.2 carts (Req 11.2)
+            if(!cart.audio) cart.audio = { sfx: [], patterns: [] };
+            if(!cart.physics) cart.physics = { entityDefs: [], triggers: [] };
+            if(!cart.gameplay) cart.gameplay = { screens: [], combatEntities: [], timers: [] };
+
+            // Validate each section independently; default invalid sections (Req 11.5)
+            var audioValidation = validateSection(cart, "audio");
+            if (!audioValidation.valid) {
+                console.warn("Cartridge audio section invalid, defaulting:", audioValidation.errors);
+                cart.audio = { sfx: [], patterns: [] };
+            }
+
+            var physicsValid = true;
+            if (cart.physics) {
+                // Basic structure validation for physics section
+                if (!cart.physics.entityDefs || !Array.isArray(cart.physics.entityDefs) ||
+                    !cart.physics.triggers || !Array.isArray(cart.physics.triggers)) {
+                    physicsValid = false;
+                }
+            }
+            if (!physicsValid) {
+                console.warn("Cartridge physics section invalid, defaulting");
+                cart.physics = { entityDefs: [], triggers: [] };
+            }
+
+            var gameplayValid = true;
+            if (cart.gameplay) {
+                // Basic structure validation for gameplay section
+                if (!Array.isArray(cart.gameplay.screens) && cart.gameplay.screens !== undefined) {
+                    gameplayValid = false;
+                }
+                if (!Array.isArray(cart.gameplay.combatEntities) && cart.gameplay.combatEntities !== undefined) {
+                    gameplayValid = false;
+                }
+                if (!Array.isArray(cart.gameplay.timers) && cart.gameplay.timers !== undefined) {
+                    gameplayValid = false;
+                }
+            }
+            if (!gameplayValid) {
+                console.warn("Cartridge gameplay section invalid, defaulting");
+                cart.gameplay = { screens: [], combatEntities: [], timers: [] };
+            }
+
+            // Hydrate audio subsystem
+            if(cart.audio.sfx && cart.audio.sfx.length > 0) {
+                cart.audio.sfx.forEach(function(sfxDef) {
+                    audioSynth.defineSfx(sfxDef.id, {
+                        waveform: sfxDef.waveform,
+                        frequency: sfxDef.frequency,
+                        duration: sfxDef.duration,
+                        envelope: sfxDef.envelope,
+                        pitchSlide: sfxDef.pitchSlide,
+                        vibratoSpeed: sfxDef.vibratoSpeed,
+                        vibratoDepth: sfxDef.vibratoDepth
+                    });
+                });
+            }
+            if(cart.audio.patterns && cart.audio.patterns.length > 0) {
+                cart.audio.patterns.forEach(function(pat) {
+                    audioSynth.definePattern(pat.id, pat.channels, pat.tempo, pat.noteData);
+                });
+            }
+
+            // Hydrate physics/collision subsystem
+            if(cart.physics.triggers && cart.physics.triggers.length > 0) {
+                cart.physics.triggers.forEach(function(t) {
+                    collisionEngine.registerTrigger(t.id, t.x, t.y, t.width, t.height, t.eventType, t.payload);
+                });
+            }
+
+            // Hydrate gameplay templates
+            if(cart.gameplay.combatEntities && cart.gameplay.combatEntities.length > 0) {
+                cart.gameplay.combatEntities.forEach(function(ce) {
+                    gameplayTemplates.createCombatEntity(ce.id, ce.hp, ce.attack, ce.defense);
+                });
+            }
+
+            buildPaletteUI(); renderPaintCanvas(); updateLayerLabels();
+            return true;
+        }
+        function saveCartToLocalStorage() {
+            try {
+                var cart = assembleCartridgeBundle();
+                localStorage.setItem('pyco8_unified_cart', JSON.stringify(cart));
+                alert("Cartridge system snapshot backed up to local storage RAM.");
+            } catch(e) {
+                if (e.validationErrors) {
+                    var msg = "Save failed - validation errors:\n" + e.validationErrors.map(function(err) { return err.section + " > " + err.field + ": " + err.message; }).join("\n");
+                    alert(msg);
+                } else {
+                    throw e;
+                }
+            }
+        }
+        function loadCartFromLocalStorage() {
+            var data = localStorage.getItem('pyco8_unified_cart');
+            if(data && unpackCartridgeBundle(JSON.parse(data))) { alert("Cartridge configurations synchronized successfully."); }
+            else { alert("No previous workspace index footprint located."); }
+        }
+        function exportCartFile() {
+            try {
+                var cart = assembleCartridgeBundle();
+                var blob = new Blob([JSON.stringify(cart, null, 2)], {type: "application/json"});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = cartFileName; a.click();
+            } catch(e) {
+                if (e.validationErrors) {
+                    var msg = "Export failed - validation errors:\n" + e.validationErrors.map(function(err) { return err.section + " > " + err.field + ": " + err.message; }).join("\n");
+                    alert(msg);
+                } else {
+                    throw e;
+                }
+            }
+        }
+        function importCartFile(event) {
+            var file = event.target.files[0]; if(!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                if(unpackCartridgeBundle(JSON.parse(e.target.result))) alert("Loaded external project bundle successfully.");
+            };
+            reader.readAsText(file);
+        }
+
+        // --- 4. ENGINE PERSPECTIVE PROJECTOR AND SHADER FUNCTIONS ---
+        function renderPerspectiveCameraStackedSprite(ctx, id, worldX, worldY, worldZ, spriteLocalAngle, isRuntimeMode, targetCanvasWidth, targetCanvasHeight) {
+            var asset = assetLibrary.find(function(a) { return a.id === id; }); if(!asset) return;
+            var data = asset.data; var size = asset.size; 
+            
+            var cW = targetCanvasWidth || ctx.canvas.width; var cH = targetCanvasHeight || ctx.canvas.height;
+            var scale = isRuntimeMode ? 1.75 : 3.8;
+
+            var drawCenterX, drawCenterY, compositeAngle;
+
+            if (isRuntimeMode) {
+                // Calculation relative to 3D center view vectors
+                var relativeX = worldX - 200; var relativeY = worldY - 150;
+                var cosCam = Math.cos(-cameraYaw); var sinCam = Math.sin(-cameraYaw);
+                var rotX = relativeX * cosCam - relativeY * sinCam;
+                var rotY = relativeX * sinCam + relativeY * cosCam;
+
+                drawCenterX = 200 + rotX; drawCenterY = 150 + rotY - worldZ;
+                compositeAngle = spriteLocalAngle - cameraYaw;
             } else {
-                if (controls.keys['KeyA']) mX = -1; if(controls.keys['KeyD']) mX = 1; if(controls.keys['KeyW']) mY = -1; if(controls.keys['KeyS']) mY = 1; if(controls.keys['Space']) handleJump();
+                drawCenterX = cW / 2; drawCenterY = (cH / 2) + (data.length * camTiltY * scale) / 2;
+                compositeAngle = spriteLocalAngle;
             }
 
-            if (isGrounded) {
-                player.position.addScaledVector(new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion), -mY * 0.25).addScaledVector(new THREE.Vector3(1,0,0).applyQuaternion(player.quaternion), -mX * 0.25);
+            // --- Cache integration: check for cached sprite (only in runtime mode) ---
+            if (isRuntimeMode && typeof OffscreenCanvas !== 'undefined' && typeof perfCache !== 'undefined') {
+                var cached = perfCache.getCachedSprite(id, compositeAngle, scale);
+                if (cached) {
+                    // Cache hit: draw the cached OffscreenCanvas at the computed position with rotation
+                    ctx.save();
+                    ctx.translate(drawCenterX, drawCenterY);
+                    ctx.rotate(compositeAngle);
+                    ctx.drawImage(cached, -cached.width / 2, -cached.height);
+                    ctx.restore();
+                    return;
+                }
             }
-            player.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0).applyQuaternion(player.quaternion), up));
-            const camPos = player.position.clone().add(up.clone().multiplyScalar(6 + (camPitch * 8))).add(new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion).multiplyScalar(camZoom));
-            camera.position.lerp(camPos, 0.2); camera.lookAt(player.position.clone().add(up.clone().multiplyScalar(2))); camera.up.copy(up);
+
+            // Determine if we should render to an OffscreenCanvas for caching (runtime mode only)
+            var useCache = isRuntimeMode && typeof OffscreenCanvas !== 'undefined' && typeof perfCache !== 'undefined';
+            var offscreen, offCtx, renderCtx;
+
+            if (useCache) {
+                // Calculate bounding dimensions for the offscreen canvas
+                var totalHeight = data.length * camTiltY * scale + size * scale;
+                var totalWidth = size * scale + data.length * Math.abs(camTiltX) * scale;
+                var offW = Math.ceil(totalWidth) + 2;
+                var offH = Math.ceil(totalHeight) + 2;
+                try {
+                    offscreen = new OffscreenCanvas(offW, offH);
+                    offCtx = offscreen.getContext('2d');
+                    renderCtx = offCtx;
+                } catch(e) {
+                    // OffscreenCanvas not supported or failed — fall through to direct render
+                    useCache = false;
+                }
+            }
+
+            if (!useCache) {
+                renderCtx = ctx;
+            }
+
+            // Render all slices
+            for (var z = 0; z < data.length; z++) {
+                var slice = data[z];
+                var screenX, screenY;
+
+                if (useCache) {
+                    // Render relative to the offscreen canvas center
+                    screenX = offscreen.width / 2 + (z * camTiltX * scale);
+                    screenY = offscreen.height - (size * scale / 2) - (z * camTiltY * scale);
+                } else {
+                    screenX = drawCenterX + (z * camTiltX * scale);
+                    screenY = drawCenterY - (z * camTiltY * scale);
+                }
+
+                renderCtx.save(); renderCtx.translate(screenX, screenY); renderCtx.rotate(useCache ? 0 : compositeAngle);
+                
+                // Pure color fill tracking matrix configurations
+                for (var r = 0; r < size; r++) {
+                    for (var c = 0; c < size; c++) {
+                        if(slice && slice[r] && slice[r][c]) {
+                            var colorCode = slice[r][c];
+                            if (colorCode !== 0 && paletteColors[colorCode]) {
+                                renderCtx.fillStyle = paletteColors[colorCode];
+                                renderCtx.fillRect((c - size/2) * scale, (r - size/2) * scale, scale + 0.35, scale + 0.35);
+                            }
+                        }
+                    }
+                }
+                renderCtx.restore();
+            }
+
+            // Store in cache and draw to main canvas
+            if (useCache && offscreen) {
+                perfCache.cacheSprite(id, compositeAngle, scale, offscreen);
+                // Draw the offscreen canvas to the real context with rotation
+                ctx.save();
+                ctx.translate(drawCenterX, drawCenterY);
+                ctx.rotate(compositeAngle);
+                ctx.drawImage(offscreen, -offscreen.width / 2, -offscreen.height);
+                ctx.restore();
+            }
+        }
+
+        // --- 5. WORKSPACE SLICE DESIGNER + RESTORED LIVE PREVIEW LOOP ---
+        var pCanvas = document.getElementById('paint-canvas'); var pCtx = pCanvas.getContext('2d');
+        var prevCanvas = document.getElementById('preview-canvas'); var prevCtx = prevCanvas.getContext('2d');
+
+        function setSpriteTool(t) { spriteTool = t; document.querySelectorAll('[id^="se-tool-"]').forEach(function(b) { b.classList.remove('active'); }); document.getElementById('se-tool-'+t).classList.add('active'); }
+        function resizeGrid(v) { gridSize = parseInt(v); stackData = Array(stackData.length).fill(0).map(function() { return Array(gridSize).fill(0).map(function() { return Array(gridSize).fill(0); }); }); renderPaintCanvas(); }
+        function updateLayerLabels() { document.getElementById('layer-label').innerText = currentLayer; document.getElementById('layer-total-label').innerText = stackData.length; }
+        
+        function changeLayer(dir) { currentLayer = Math.max(0, Math.min(stackData.length - 1, currentLayer + dir)); updateLayerLabels(); renderPaintCanvas(); }
+        function pushNewStackLayer() { stackData.push(Array(gridSize).fill(0).map(function() { return Array(gridSize).fill(0); })); currentLayer = stackData.length - 1; updateLayerLabels(); renderPaintCanvas(); }
+        function popTopStackLayer() { if(stackData.length > 1) { stackData.pop(); currentLayer = Math.min(currentLayer, stackData.length - 1); updateLayerLabels(); renderPaintCanvas(); } }
+
+        function renderPaintCanvas() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height); var slice = stackData[currentLayer]; var cellSize = pCanvas.width / gridSize;
+            for(var r=0; r<gridSize; r++) {
+                for(var c=0; c<gridSize; c++) {
+                    if(slice && slice[r] && slice[r][c] !== 0 && paletteColors[slice[r][c]]) { pCtx.fillStyle = paletteColors[slice[r][c]]; pCtx.fillRect(c*cellSize, r*cellSize, cellSize, cellSize); }
+                    pCtx.strokeStyle = 'rgba(255,255,255,0.03)'; pCtx.strokeRect(c*cellSize, r*cellSize, cellSize, cellSize);
+                }
+            }
+        }
+
+        function handlePaint(e) {
+            e.preventDefault(); var rect = pCanvas.getBoundingClientRect();
+            var clientX = e.touches ? e.touches[0].clientX : e.clientX; var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            var x = Math.floor(((clientX - rect.left) / rect.width) * gridSize); var y = Math.floor(((clientY - rect.top) / rect.height) * gridSize);
+            if(x>=0 && x<gridSize && y>=0 && y<gridSize) { stackData[currentLayer][y][x] = spriteTool === 'pencil' ? activeColorIndex : 0; renderPaintCanvas(); }
+        }
+        pCanvas.addEventListener('pointerdown', function(e) { isDrawing = true; handlePaint(e); });
+        pCanvas.addEventListener('pointermove', function(e) { if(isDrawing) handlePaint(e); }); window.addEventListener('pointerup', function() { isDrawing = false; });
+
+        function buildPaletteUI() {
+            var container = document.getElementById('palette-swatch-row'); container.innerHTML = '';
+            paletteColors.forEach(function(c, i) {
+                if(i===0) return; var s = document.createElement('div'); s.className = 'swatch ' + (i===activeColorIndex?'active':''); s.style.background = c;
+                s.onclick = function() { activeColorIndex = i; buildPaletteUI(); }; container.appendChild(s);
+            });
+        }
+        function updateSelectedColorSlot(v) { paletteColors[activeColorIndex] = v; buildPaletteUI(); renderPaintCanvas(); }
+
+        // Restored Dedicated Live Micro-Rotation Engine Animation Loop for the Designer Tab
+        function runLiveDesignerPreviewLoop() {
+            requestAnimationFrame(runLiveDesignerPreviewLoop);
+            if (!document.getElementById('view-editor').classList.contains('active')) return;
             
-            targetPlanet = null; jumpLine.visible = false;
-            const fwd = new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
-            planets.forEach(p => {
-                if(p === currentPlanet) return;
-                if(fwd.dot(p.position.clone().sub(player.position).normalize()) > 0.85) { 
-                    targetPlanet = p; jumpLine.visible = true; 
-                    const mid = player.position.clone().add(p.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));
-                    const curve = new THREE.QuadraticBezierCurve3(player.position, mid, p.position);
-                    jumpLine.geometry.setFromPoints(curve.getPoints(20));
+            previewAngle += 0.012;
+            prevCtx.clearRect(0, 0, prevCanvas.width, prevCanvas.height);
+            
+            // Generate standard localized asset view mock parameters
+            var mockAssetId = 9999;
+            assetLibrary.push({ id: mockAssetId, size: gridSize, data: stackData });
+            renderPerspectiveCameraStackedSprite(prevCtx, mockAssetId, 0, 0, 0, previewAngle, false, prevCanvas.width, prevCanvas.height);
+            assetLibrary.pop();
+        }
+        requestAnimationFrame(runLiveDesignerPreviewLoop);
+
+        // --- 6. RESOURCE HUB MATRIX & BLUEPRINTS ---
+        function renderAssetLibrary() {
+            var grid = document.getElementById('asset-library-grid'); grid.innerHTML = '';
+            assetLibrary.forEach(function(asset) {
+                var card = document.createElement('div'); card.className = "asset-card " + (asset.id === editingAssetId ? 'selected' : '');
+                card.innerHTML = '\
+                    <div class="asset-meta">ID ' + asset.id + ': ' + asset.name + '</div>\
+                    <canvas id="lib-thumb-' + asset.id + '" width="80" height="80"></canvas>\
+                    <button class="btn" style="font-size:9px; padding:3px 6px; margin-top:4px;" onclick="event.stopPropagation(); window.loadAssetToWorkspace(' + asset.id + ')">Load to Worktop</button>\
+                ';
+                card.onclick = function() { editingAssetId = asset.id; renderAssetLibrary(); };
+                grid.appendChild(card);
+                
+                var thumbCtx = document.getElementById('lib-thumb-'+asset.id).getContext('2d');
+                renderPerspectiveCameraStackedSprite(thumbCtx, asset.id, 0, 0, 0, 0.4, false, 80, 80);
+            });
+        }
+        function loadAssetToWorkspace(id) {
+            var target = assetLibrary.find(function(a) { return a.id === id; }); if(!target) return;
+            editingAssetId = id; gridSize = target.size; stackData = JSON.parse(JSON.stringify(target.data));
+            switchTab('editor');
+        }
+        function saveActiveWorkspace() {
+            var target = assetLibrary.find(function(a) { return a.id === editingAssetId; });
+            if(target) {
+                target.size = gridSize; target.data = JSON.parse(JSON.stringify(stackData));
+                // Invalidate cache for this asset on save for hot-reload correctness
+                if (typeof perfCache !== 'undefined') { perfCache.invalidateAsset(editingAssetId); }
+                alert("Matrix updated inside asset index context.");
+            }
+            else {
+                var name = prompt("Assign identification label for this resource:", "Asset " + assetCounter); if(!name) return;
+                assetLibrary.push({ id: assetCounter++, name: name, size: gridSize, data: JSON.parse(JSON.stringify(stackData)) });
+            }
+            renderAssetLibrary();
+        }
+        function createNewAssetInLibrary() {
+            var blank = Array(6).fill(0).map(function() { return Array(16).fill(0).map(function() { return Array(16).fill(0); }); });
+            assetLibrary.push({ id: assetCounter++, name: "Custom Resource Mat", size: 16, data: blank });
+            renderAssetLibrary();
+        }
+
+        // --- 7. REWRIED MAP ARCHITECTURE MECHANICS ---
+        var mCanvas = document.getElementById('map-canvas'); var mCtx = mCanvas.getContext('2d');
+        function setMapTool(t) { mapTool = t; document.querySelectorAll('[id^="tool-"]').forEach(function(b){ b.classList.remove('active'); }); document.getElementById('tool-'+t).classList.add('active'); }
+        function clearMapGrid() { var layer = document.getElementById('map-target-layer').value; mapGrid[layer] = Array(mapHeight).fill(0).map(function() { return Array(mapWidth).fill(-1); }); renderMapEditorCanvas(); }
+        
+        function renderMapPaletteBrushes() {
+            var row = document.getElementById('map-palette-row'); row.innerHTML = '';
+            assetLibrary.forEach(function(asset) {
+                var card = document.createElement('div'); card.className = 'asset-card ' + (asset.id === selectedMapAssetIndex ? 'selected' : '');
+                card.innerHTML = '<div class="asset-meta">ID: ' + asset.id + '</div><canvas id="map-pal-thumb-' + asset.id + '" width="50" height="50"></canvas>';
+                card.onclick = function() { selectedMapAssetIndex = asset.id; renderMapPaletteBrushes(); }; row.appendChild(card);
+                renderPerspectiveCameraStackedSprite(document.getElementById('map-pal-thumb-'+asset.id).getContext('2d'), asset.id, 0, 0, 0, 0, false, 50, 50);
+            });
+        }
+        
+        function renderMapEditorCanvas() {
+            mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+            var tileW = mCanvas.width / mapWidth; var tileH = mCanvas.height / mapHeight;
+            var activeTargetLayer = document.getElementById('map-target-layer').value;
+
+            ['ground', 'object'].forEach(function(lKey) {
+                var isCurrentLayer = (activeTargetLayer === lKey);
+                for(var r=0; r<mapHeight; r++) {
+                    for(var c=0; c<mapWidth; c++) {
+                        var id = mapGrid[lKey][r][c];
+                        if(id !== -1) {
+                            mCtx.save(); if(!isCurrentLayer) mCtx.globalAlpha = 0.3;
+                            var drawX = (c * tileW) + tileW / 2; var drawY = (r * tileH) + tileH / 2;
+                            renderPerspectiveCameraStackedSprite(mCtx, id, drawX, drawY, 0, 0, false, mCanvas.width, mCanvas.height);
+                            mCtx.restore();
+                        }
+                    }
                 }
             });
-            renderer.render(scene, camera);
         }
-        animate();
+        mCanvas.addEventListener('pointerdown', function(e) {
+            var rect = mCanvas.getBoundingClientRect();
+            var x = Math.floor(((e.clientX - rect.left) / rect.width) * mapWidth); var y = Math.floor(((e.clientY - rect.top) / rect.height) * mapHeight);
+            if(x>=0 && x<mapWidth && y>=0 && y<mapHeight) {
+                var layer = document.getElementById('map-target-layer').value;
+                mapGrid[layer][y][x] = (mapTool === 'pencil') ? selectedMapAssetIndex : -1;
+                renderMapEditorCanvas();
+            }
+        });
+
+        // --- 8. MOBILE CANVAS OVERLAY TOUCH LOGIC ---
+        var gCanvas = document.getElementById('game-canvas'); var gCtx = gCanvas.getContext('2d');
+        
+        function parseCanvasTouchCoordinates(e) {
+            var rect = gCanvas.getBoundingClientRect();
+            var touches = e.changedTouches ? e.changedTouches : [e]; var out = [];
+            for(var i=0; i<touches.length; i++) {
+                var t = touches[i]; var cx = t.clientX, cy = t.clientY;
+                var vx = ((cx - rect.left) / rect.width) * gCanvas.width;
+                var vy = ((cy - rect.top) / rect.height) * gCanvas.height;
+                out.push({ id: t.identifier !== undefined ? t.identifier : 999, x: vx, y: vy });
+            }
+            return out;
+        }
+        function handleTouchStart(e) {
+            e.preventDefault(); var pts = parseCanvasTouchCoordinates(e);
+            pts.forEach(function(p) {
+                activeTouches[p.id] = p;
+                if(Math.sqrt((p.x - joystickState.cx)**2 + (p.y - joystickState.cy)**2) < joystickState.r + 20 && !joystickState.active) {
+                    joystickState.active = true; joystickState.touchId = p.id; updateJoystickVectors(p.x, p.y);
+                }
+                Object.keys(buttonLayout).forEach(function(k) {
+                    var b = buttonLayout[k]; if(Math.sqrt((p.x - b.x)**2 + (p.y - b.y)**2) < b.r + 10) b.pressed = true;
+                });
+            });
+        }
+        function handleTouchMove(e) {
+            e.preventDefault(); var pts = parseCanvasTouchCoordinates(e);
+            pts.forEach(function(p) {
+                if(activeTouches[p.id]) activeTouches[p.id] = p;
+                if(joystickState.active && joystickState.touchId === p.id) updateJoystickVectors(p.x, p.y);
+                Object.keys(buttonLayout).forEach(function(k) {
+                    var b = buttonLayout[k]; if(Math.sqrt((p.x - b.x)**2 + (p.y - b.y)**2) < b.r + 10) b.pressed = true;
+                });
+            });
+        }
+        function handleTouchEnd(e) {
+            e.preventDefault(); var pts = parseCanvasTouchCoordinates(e);
+            pts.forEach(function(p) {
+                delete activeTouches[p.id];
+                if(joystickState.active && joystickState.touchId === p.id) {
+                    joystickState.active = false; joystickState.touchId = null;
+                    joystickState.handleX = joystickState.cx; joystickState.handleY = joystickState.cy;
+                    joystickState.outputX = 0; joystickState.outputY = 0;
+                }
+                Object.keys(buttonLayout).forEach(function(k) {
+                    var b = buttonLayout[k]; var pressed = false;
+                    Object.values(activeTouches).forEach(function(at){ if(Math.sqrt((at.x-b.x)**2 + (at.y-b.y)**2) < b.r+10) pressed = true; });
+                    b.pressed = pressed;
+                });
+            });
+        }
+        function updateJoystickVectors(tx, ty) {
+            var dx = tx - joystickState.cx; var dy = ty - joystickState.cy; var dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist > joystickState.r) { dx = (dx / dist) * joystickState.r; dy = (dy / dist) * joystickState.r; }
+            joystickState.handleX = joystickState.cx + dx; joystickState.handleY = joystickState.cy + dy;
+            joystickState.outputX = dx / joystickState.r; joystickState.outputY = dy / joystickState.r;
+        }
+
+        gCanvas.addEventListener('touchstart', handleTouchStart, {passive:false}); gCanvas.addEventListener('touchmove', handleTouchMove, {passive:false});
+        gCanvas.addEventListener('touchend', handleTouchEnd, {passive:false}); gCanvas.addEventListener('pointerdown', handleTouchStart);
+        gCanvas.addEventListener('pointermove', handleTouchMove); window.addEventListener('pointerup', handleTouchEnd);
+
+        function drawVirtualHardwareOverlay() {
+            gCtx.fillStyle = "rgba(255, 255, 255, 0.04)"; gCtx.strokeStyle = "rgba(255, 255, 255, 0.15)"; gCtx.lineWidth = 2;
+            gCtx.beginPath(); gCtx.arc(joystickState.cx, joystickState.cy, joystickState.r, 0, Math.PI*2); gCtx.fill(); gCtx.stroke();
+            gCtx.fillStyle = joystickState.active ? "var(--accent-bright)" : "rgba(255, 255, 255, 0.3)";
+            gCtx.beginPath(); gCtx.arc(joystickState.handleX, joystickState.handleY, 12, 0, Math.PI*2); gCtx.fill();
+
+            Object.keys(buttonLayout).forEach(function(k) {
+                var b = buttonLayout[k]; gCtx.fillStyle = b.pressed ? "var(--accent)" : "rgba(255, 255, 255, 0.06)";
+                gCtx.strokeStyle = b.pressed ? "#fff" : "rgba(255, 255, 255, 0.2)";
+                gCtx.beginPath(); gCtx.arc(b.x, b.y, b.r, 0, Math.PI*2); gCtx.fill(); gCtx.stroke();
+                gCtx.fillStyle = "#fff"; gCtx.font = "bold 10px monospace"; gCtx.textAlign = "center"; gCtx.textBaseline = "middle";
+                gCtx.fillText(k, b.x, b.y);
+            });
+        }
+
+        // --- 8.5 AUDIO SYNTHESIS ENGINE ---
+        var AudioSynth = (function() {
+            var MAX_VOICES = 8;
+            var RESUME_TIMEOUT_MS = 3000;
+
+            function AudioSynthClass() {
+                this.audioContext = null;
+                this.masterGain = null;
+                this.voices = [];        // {oscillator, gainNode, startTime, id}
+                this.masterVolume = 1.0;
+                this.sfxDefinitions = new Map();
+                this._resuming = false;
+
+                // Music Pattern Sequencer state
+                this.patterns = new Map();         // patternId -> {channels, tempo, noteData}
+                this.activePattern = null;         // currently active pattern object
+                this.activePatternId = null;       // currently active pattern ID
+                this.isPlaying = false;            // sequencer playing flag
+                this.loopPattern = true;           // loop flag for current pattern
+                this.currentStep = 0;             // current step index
+                this.sequencerAccumulator = 0.0;  // timing accumulator in seconds
+
+                this._init();
+            }
+
+            AudioSynthClass.prototype._init = function() {
+                try {
+                    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioCtx();
+                    this.masterGain = this.audioContext.createGain();
+                    this.masterGain.gain.setValueAtTime(1.0, this.audioContext.currentTime);
+                    this.masterGain.connect(this.audioContext.destination);
+                } catch(e) {
+                    console.warn('[AudioSynth] Web Audio API not available:', e);
+                }
+            };
+
+            AudioSynthClass.prototype.ensureResumed = function(callback) {
+                if (!this.audioContext) { return; }
+                if (this.audioContext.state !== 'suspended') {
+                    callback();
+                    return;
+                }
+                if (this._resuming) { return; }
+
+                this._resuming = true;
+                var self = this;
+                var resolved = false;
+
+                var timeout = setTimeout(function() {
+                    if (!resolved) {
+                        resolved = true;
+                        self._resuming = false;
+                        // Discard the pending sound request (Req 3.2)
+                    }
+                }, RESUME_TIMEOUT_MS);
+
+                this.audioContext.resume().then(function() {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        self._resuming = false;
+                        callback();
+                    }
+                }).catch(function() {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        self._resuming = false;
+                        // Discard the pending sound request (Req 3.2)
+                    }
+                });
+            };
+
+            AudioSynthClass.prototype.setMasterVolume = function(vol) {
+                // Clamp to [0.0, 1.0] (Req 3.4)
+                vol = Math.max(0.0, Math.min(1.0, vol));
+                this.masterVolume = vol;
+                if (this.masterGain && this.audioContext) {
+                    this.masterGain.gain.setValueAtTime(vol, this.audioContext.currentTime);
+                }
+            };
+
+            AudioSynthClass.prototype._allocateVoice = function(sfxId) {
+                // Evict oldest voice if at capacity (Req 1.9)
+                if (this.voices.length >= MAX_VOICES) {
+                    var oldest = this.voices.shift();
+                    try {
+                        oldest.oscillator.stop();
+                        oldest.oscillator.disconnect();
+                        oldest.gainNode.disconnect();
+                    } catch(e) { /* already stopped */ }
+                }
+                return this.voices.length < MAX_VOICES;
+            };
+
+            AudioSynthClass.prototype._registerVoice = function(voiceEntry) {
+                this.voices.push(voiceEntry);
+            };
+
+            AudioSynthClass.prototype._removeVoice = function(voiceEntry) {
+                var idx = this.voices.indexOf(voiceEntry);
+                if (idx !== -1) { this.voices.splice(idx, 1); }
+            };
+
+            AudioSynthClass.prototype.defineSfx = function(id, config) {
+                // Store SFX definition with defaults
+                this.sfxDefinitions.set(id, {
+                    waveform: config.waveform || 'square',
+                    frequency: config.frequency || 440,
+                    duration: config.duration || 0.5,
+                    envelope: {
+                        attack: (config.envelope && config.envelope.attack != null) ? config.envelope.attack : 0.01,
+                        decay: (config.envelope && config.envelope.decay != null) ? config.envelope.decay : 0.1,
+                        sustain: (config.envelope && config.envelope.sustain != null) ? config.envelope.sustain : 0.5,
+                        release: (config.envelope && config.envelope.release != null) ? config.envelope.release : 0.2
+                    },
+                    pitchSlide: config.pitchSlide || 0,
+                    vibratoSpeed: config.vibratoSpeed || 0,
+                    vibratoDepth: config.vibratoDepth || 0
+                });
+            };
+
+            AudioSynthClass.prototype.playSfx = function(id, volume) {
+                var self = this;
+                // Silently ignore invalid SFX IDs (Req 1.3)
+                if (!this.sfxDefinitions.has(id)) { return; }
+                if (!this.audioContext) { return; }
+
+                // Clamp volume to [0.0, 1.0] (Req 1.8)
+                if (volume === undefined || volume === null) { volume = 1.0; }
+                volume = Math.max(0.0, Math.min(1.0, volume));
+
+                var doPlay = function() {
+                    var sfx = self.sfxDefinitions.get(id);
+                    var ctx = self.audioContext;
+                    var now = ctx.currentTime;
+
+                    // Allocate voice - evict oldest if at capacity (Req 1.9)
+                    self._allocateVoice(id);
+
+                    var sourceNode;
+                    var waveform = sfx.waveform;
+
+                    // Handle noise waveform via AudioBufferSourceNode (Req 1.4)
+                    if (waveform === 'noise') {
+                        var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * sfx.duration));
+                        var noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                        var data = noiseBuffer.getChannelData(0);
+                        for (var i = 0; i < bufferSize; i++) {
+                            data[i] = Math.random() * 2 - 1;
+                        }
+                        sourceNode = ctx.createBufferSource();
+                        sourceNode.buffer = noiseBuffer;
+                    } else {
+                        // Standard oscillator for square, triangle, sawtooth, pulse (Req 1.4)
+                        sourceNode = ctx.createOscillator();
+                        // Pulse uses square as closest Web Audio equivalent
+                        var oscType = (waveform === 'pulse') ? 'square' : waveform;
+                        sourceNode.type = oscType;
+                        sourceNode.frequency.setValueAtTime(sfx.frequency, now);
+
+                        // Apply pitch slide (Req 1.5)
+                        if (sfx.pitchSlide !== 0) {
+                            var endFreq = sfx.frequency + (sfx.pitchSlide * sfx.duration);
+                            // Clamp to [20, 20000] Hz
+                            endFreq = Math.max(20, Math.min(20000, endFreq));
+                            sourceNode.frequency.linearRampToValueAtTime(endFreq, now + sfx.duration);
+                        }
+
+                        // Apply vibrato via LFO modulator (Req 1.6)
+                        if (sfx.vibratoDepth > 0 && sfx.vibratoSpeed > 0) {
+                            var lfo = ctx.createOscillator();
+                            var lfoGain = ctx.createGain();
+                            // Clamp vibratoSpeed to [0.1, 50.0] Hz
+                            var vSpeed = Math.max(0.1, Math.min(50.0, sfx.vibratoSpeed));
+                            // Clamp vibratoDepth to [1, 1200] cents
+                            var vDepth = Math.max(1, Math.min(1200, sfx.vibratoDepth));
+                            lfo.frequency.setValueAtTime(vSpeed, now);
+                            lfoGain.gain.setValueAtTime(vDepth, now);
+                            lfo.connect(lfoGain);
+                            lfoGain.connect(sourceNode.detune);
+                            lfo.start(now);
+                            lfo.stop(now + sfx.duration + 0.01);
+                        }
+                    }
+
+                    // ADSR Envelope (Req 1.7)
+                    var envNode = ctx.createGain();
+                    var attack = sfx.envelope.attack;
+                    var decay = sfx.envelope.decay;
+                    var sustain = Math.max(0.0, Math.min(1.0, sfx.envelope.sustain));
+                    var release = sfx.envelope.release;
+                    var peakGain = Math.max(0.0, Math.min(1.0, volume));
+
+                    envNode.gain.setValueAtTime(0, now);
+                    envNode.gain.linearRampToValueAtTime(peakGain, now + attack);
+                    envNode.gain.linearRampToValueAtTime(peakGain * sustain, now + attack + decay);
+                    var sustainEnd = now + sfx.duration - release;
+                    if (sustainEnd > now + attack + decay) {
+                        envNode.gain.setValueAtTime(peakGain * sustain, sustainEnd);
+                    }
+                    envNode.gain.linearRampToValueAtTime(0, now + sfx.duration);
+
+                    // Connect graph: source -> envelope -> masterGain -> destination
+                    sourceNode.connect(envNode);
+                    envNode.connect(self.masterGain);
+
+                    // Start and schedule stop (Req 1.2)
+                    sourceNode.start(now);
+                    sourceNode.stop(now + sfx.duration + 0.01);
+
+                    // Register voice for tracking (Req 1.10 - allow overlapping instances)
+                    var voiceEntry = { oscillator: sourceNode, gainNode: envNode, startTime: now, id: id };
+                    self._registerVoice(voiceEntry);
+
+                    // Schedule cleanup on ended
+                    sourceNode.onended = function() {
+                        try {
+                            sourceNode.disconnect();
+                            envNode.disconnect();
+                        } catch(e) { /* already disconnected */ }
+                        self._removeVoice(voiceEntry);
+                    };
+                };
+
+                // Resume AudioContext if suspended (Req 3.1)
+                this.ensureResumed(doPlay);
+            };
+
+            // --- Music Pattern Sequencer Methods ---
+
+            AudioSynthClass.prototype.definePattern = function(patternId, channels, tempo, noteData) {
+                // Validate: 1-4 channels, noteData is array of channel arrays with 1-64 steps
+                if (channels < 1 || channels > 4) return;
+                if (!noteData || !Array.isArray(noteData) || noteData.length < 1) return;
+                var steps = noteData[0] ? noteData[0].length : 0;
+                if (steps < 1 || steps > 64) return;
+
+                this.patterns.set(patternId, {
+                    channels: channels,
+                    tempo: tempo,
+                    noteData: noteData,
+                    steps: steps
+                });
+            };
+
+            AudioSynthClass.prototype.playPattern = function(patternId, loop) {
+                // Silently ignore invalid pattern IDs (Req 2.8)
+                if (!this.patterns.has(patternId)) { return; }
+
+                var self = this;
+                var doPlay = function() {
+                    // Stop current pattern before starting new one (Req 2.2)
+                    if (self.isPlaying) {
+                        self.isPlaying = false;
+                    }
+
+                    self.activePattern = self.patterns.get(patternId);
+                    self.activePatternId = patternId;
+                    self.isPlaying = true;
+                    self.loopPattern = (loop !== undefined) ? !!loop : true;
+                    self.currentStep = 0;
+                    self.sequencerAccumulator = 0.0;
+                };
+
+                // Resume AudioContext if suspended (Req 3.1)
+                this.ensureResumed(doPlay);
+            };
+
+            AudioSynthClass.prototype.stopMusic = function() {
+                // Stop sequencer and reset step to 0 regardless of state (Req 2.6)
+                this.isPlaying = false;
+                this.currentStep = 0;
+                this.sequencerAccumulator = 0.0;
+                this.activePattern = null;
+                this.activePatternId = null;
+            };
+
+            AudioSynthClass.prototype.updateSequencer = function(dt) {
+                // Called from the game loop to advance note positions
+                if (!this.activePattern || !this.isPlaying) return;
+
+                var pattern = this.activePattern;
+                // Steps per second = tempo * 4 / 60 (Req 2.3)
+                var stepsPerSecond = (pattern.tempo * 4) / 60;
+                var stepDuration = 1.0 / stepsPerSecond;
+
+                this.sequencerAccumulator += dt;
+
+                while (this.sequencerAccumulator >= stepDuration) {
+                    this.sequencerAccumulator -= stepDuration;
+
+                    // Process each channel at current step (Req 2.7)
+                    for (var ch = 0; ch < pattern.channels; ch++) {
+                        if (!pattern.noteData[ch]) continue;
+                        var noteEvent = pattern.noteData[ch][this.currentStep];
+
+                        // Rest steps produce no sound (Req 2.9)
+                        if (noteEvent && noteEvent.note >= 0) {
+                            // Calculate frequency from MIDI note number
+                            var freq = 440 * Math.pow(2, (noteEvent.note - 69) / 12);
+                            var vol = (noteEvent.volume !== undefined) ? noteEvent.volume : 1.0;
+                            var sfxId = noteEvent.sfxId;
+
+                            // Trigger using the SFX system with frequency override
+                            this._triggerTrackerNote(ch, freq, noteEvent.duration * stepDuration, vol, sfxId);
+                        }
+                    }
+
+                    // Advance step counter
+                    this.currentStep++;
+                    if (this.currentStep >= pattern.steps) {
+                        if (this.loopPattern) {
+                            // Seamless loop restart at step 0 (Req 2.4)
+                            this.currentStep = 0;
+                        } else {
+                            // Stop playback and reset step to 0 (Req 2.5)
+                            this.isPlaying = false;
+                            this.currentStep = 0;
+                            this.sequencerAccumulator = 0.0;
+                            this.activePattern = null;
+                            this.activePatternId = null;
+                            return;
+                        }
+                    }
+                }
+            };
+
+            AudioSynthClass.prototype._triggerTrackerNote = function(channel, freq, duration, volume, sfxId) {
+                // Reuse SFX system with frequency override from MIDI note
+                if (!this.audioContext) return;
+                var ctx = this.audioContext;
+                var now = ctx.currentTime;
+
+                // Get waveform/envelope from referenced SFX, or use defaults
+                var waveform = 'square';
+                var envelope = { attack: 0.01, decay: 0.05, sustain: 0.7, release: 0.05 };
+
+                if (sfxId !== undefined && sfxId !== null && this.sfxDefinitions.has(sfxId)) {
+                    var sfxDef = this.sfxDefinitions.get(sfxId);
+                    waveform = sfxDef.waveform;
+                    envelope = sfxDef.envelope;
+                }
+
+                // Allocate voice
+                this._allocateVoice(-1);
+
+                var sourceNode;
+                if (waveform === 'noise') {
+                    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+                    var noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    var data = noiseBuffer.getChannelData(0);
+                    for (var i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    sourceNode = ctx.createBufferSource();
+                    sourceNode.buffer = noiseBuffer;
+                } else {
+                    sourceNode = ctx.createOscillator();
+                    var oscType = (waveform === 'pulse') ? 'square' : waveform;
+                    sourceNode.type = oscType;
+                    sourceNode.frequency.setValueAtTime(freq, now);
+                }
+
+                // ADSR Envelope for tracker note
+                var envNode = ctx.createGain();
+                var attack = Math.min(envelope.attack, duration * 0.25);
+                var release = Math.min(envelope.release, duration * 0.25);
+                var sustain = Math.max(0.0, Math.min(1.0, envelope.sustain));
+                var peakGain = Math.max(0.0, Math.min(1.0, volume));
+
+                envNode.gain.setValueAtTime(0, now);
+                envNode.gain.linearRampToValueAtTime(peakGain, now + attack);
+                var decayEnd = now + attack + Math.min(envelope.decay, duration - attack - release);
+                envNode.gain.linearRampToValueAtTime(peakGain * sustain, decayEnd);
+                var sustainEnd = now + duration - release;
+                if (sustainEnd > decayEnd) {
+                    envNode.gain.setValueAtTime(peakGain * sustain, sustainEnd);
+                }
+                envNode.gain.linearRampToValueAtTime(0, now + duration);
+
+                // Connect: source -> envelope -> masterGain
+                sourceNode.connect(envNode);
+                envNode.connect(this.masterGain);
+
+                sourceNode.start(now);
+                sourceNode.stop(now + duration + 0.01);
+
+                var self = this;
+                var voiceEntry = { oscillator: sourceNode, gainNode: envNode, startTime: now, id: -1 };
+                self._registerVoice(voiceEntry);
+
+                sourceNode.onended = function() {
+                    try {
+                        sourceNode.disconnect();
+                        envNode.disconnect();
+                    } catch(e) {}
+                    self._removeVoice(voiceEntry);
+                };
+            };
+
+            return AudioSynthClass;
+        })();
+
+        var audioSynth = new AudioSynth();
+
+        // --- 8.6 COLLISION & PHYSICS ENGINE ---
+        var CollisionEngine = (function() {
+            var TILE_SIZE = 22; // Matches the runtime tile size used in draw_world_map
+
+            function CollisionEngineClass() {
+                this.entities = new Map();
+                this.tileSize = TILE_SIZE;
+                this.mapGrid = null; // Will reference the global mapGrid
+                this.triggers = new Map(); // Stores trigger zone definitions (Req 6.1)
+                this.entityTriggerState = new Map(); // Tracks which entities are inside which triggers (Req 6.3)
+            }
+
+            /**
+             * Registers an entity in the spatial index for collision participation.
+             * Req 5.1: w > 0 and h > 0 required
+             * Req 5.2: Duplicate ID overwrites previous registration
+             * Req 5.7: w <= 0 or h <= 0 is ignored
+             */
+            CollisionEngineClass.prototype.registerEntity = function(id, x, y, w, h, solid) {
+                // Validate dimensions (Req 5.7)
+                if (w <= 0 || h <= 0) { return; }
+
+                // Register (or overwrite on duplicate ID per Req 5.2)
+                this.entities.set(id, {
+                    id: id,
+                    x: x,
+                    y: y,
+                    w: w,
+                    h: h,
+                    solid: solid !== undefined ? !!solid : true
+                });
+            };
+
+            /**
+             * Removes entity from spatial index (Req 5.8)
+             */
+            CollisionEngineClass.prototype.unregisterEntity = function(id) {
+                this.entities.delete(id);
+            };
+
+            /**
+             * Checks if a bounding box overlaps any solid tiles in the OBJECT layer.
+             * Out-of-bounds is treated as solid (Req 4.4).
+             * Uses the global mapGrid.object layer.
+             */
+            CollisionEngineClass.prototype.collidesWithMap = function(box) {
+                var grid = this.mapGrid || mapGrid;
+                if (!grid || !grid.object) { return false; }
+
+                var objectLayer = grid.object;
+                var ts = this.tileSize;
+                var mW = objectLayer[0] ? objectLayer[0].length : 0;
+                var mH = objectLayer.length;
+
+                // Convert world coordinates to tile grid coordinates
+                var startCol = Math.floor(box.x / ts);
+                var endCol = Math.floor((box.x + box.w - 0.001) / ts);
+                var startRow = Math.floor(box.y / ts);
+                var endRow = Math.floor((box.y + box.h - 0.001) / ts);
+
+                // Check all tiles that the box could overlap
+                for (var row = startRow; row <= endRow; row++) {
+                    for (var col = startCol; col <= endCol; col++) {
+                        // Out-of-bounds treated as solid (Req 4.4)
+                        if (row < 0 || row >= mH || col < 0 || col >= mW) {
+                            return true;
+                        }
+                        // Any non-empty object tile is solid
+                        var tileId = objectLayer[row][col];
+                        if (tileId !== -1) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            };
+
+            /**
+             * Resolves entity movement with wall-sliding behavior.
+             * Req 4.1: Resolve X and Y axes independently for wall-sliding
+             * Req 4.2: Preserve full movement along unblocked axis
+             * Req 4.3: Snap to nearest tile edge on collision
+             * Req 4.4: Block movement at map boundaries
+             * Req 4.5: Return zeroed response for unregistered entities
+             * Req 4.6: No entity bbox overlaps solid tile after resolution
+             */
+            CollisionEngineClass.prototype.resolveMovement = function(entityId, dx, dy) {
+                // Req 4.5: Return zeroed response for unregistered entity IDs
+                var entity = this.entities.get(entityId);
+                if (!entity) {
+                    return { x: 0, y: 0, collisions: [], events: [] };
+                }
+
+                var collisions = [];
+                var ts = this.tileSize;
+                var newX = entity.x;
+                var newY = entity.y;
+
+                // Step 1: Resolve X-axis independently (Req 4.1)
+                if (dx !== 0) {
+                    var testX = entity.x + dx;
+                    var xBox = { x: testX, y: entity.y, w: entity.w, h: entity.h };
+
+                    if (this.collidesWithMap(xBox)) {
+                        // Req 4.3: Snap to tile edge
+                        collisions.push({ axis: 'x', blocked: true });
+                        if (dx > 0) {
+                            // Moving right: snap to left edge of blocking tile
+                            newX = Math.floor((testX + entity.w) / ts) * ts - entity.w;
+                        } else {
+                            // Moving left: snap to right edge of blocking tile
+                            newX = Math.ceil(testX / ts) * ts;
+                        }
+                    } else {
+                        newX = testX;
+                    }
+                }
+
+                // Step 2: Resolve Y-axis independently using resolved X (Req 4.1, 4.2)
+                if (dy !== 0) {
+                    var testY = entity.y + dy;
+                    var yBox = { x: newX, y: testY, w: entity.w, h: entity.h };
+
+                    if (this.collidesWithMap(yBox)) {
+                        // Req 4.3: Snap to tile edge
+                        collisions.push({ axis: 'y', blocked: true });
+                        if (dy > 0) {
+                            // Moving down: snap to top edge of blocking tile
+                            newY = Math.floor((testY + entity.h) / ts) * ts - entity.h;
+                        } else {
+                            // Moving up: snap to bottom edge of blocking tile
+                            newY = Math.ceil(testY / ts) * ts;
+                        }
+                    } else {
+                        newY = testY;
+                    }
+                }
+
+                // Step 3: Update entity position in the registry
+                entity.x = newX;
+                entity.y = newY;
+
+                // Step 4: Check trigger zones (Req 6.2, 6.3, 6.4)
+                var events = this.checkTriggers(entity);
+
+                return { x: newX, y: newY, collisions: collisions, events: events };
+            };
+
+            /**
+             * Checks if two entities' AABBs share area (overlap).
+             * Req 5.3: Returns true iff AABBs share area (edge-touching returns false)
+             * Req 5.4: Symmetric: checkOverlap(a, b) === checkOverlap(b, a)
+             * Req 5.5: Returns false for unregistered IDs (including null/undefined)
+             * Req 5.6: Returns false when same ID is passed for both args
+             */
+            CollisionEngineClass.prototype.checkOverlap = function(idA, idB) {
+                // Req 5.5: Return false for null/undefined IDs
+                if (idA == null || idB == null) { return false; }
+
+                // Req 5.6: Same-ID check returns false
+                if (idA === idB) { return false; }
+
+                // Req 5.5: Return false for unregistered IDs
+                var entityA = this.entities.get(idA);
+                var entityB = this.entities.get(idB);
+                if (!entityA || !entityB) { return false; }
+
+                // Req 5.3: AABB area overlap test using strict inequalities
+                // Two boxes share area iff they overlap in both X and Y axes
+                // Edge-touching returns false because strict < means touching edges don't count
+                var ax = entityA.x, ay = entityA.y, aw = entityA.w, ah = entityA.h;
+                var bx = entityB.x, by = entityB.y, bw = entityB.w, bh = entityB.h;
+
+                return (ax < bx + bw) && (ax + aw > bx) && (ay < by + bh) && (ay + ah > by);
+            };
+
+            /**
+             * Registers a rectangular trigger zone that fires when any entity overlaps it.
+             * Req 6.1: register_trigger(id, x, y, w, h, event_type, payload)
+             * Req 6.5: Supports types "door", "chest", "zone", "custom"
+             */
+            CollisionEngineClass.prototype.registerTrigger = function(id, x, y, w, h, eventType, payload) {
+                var validTypes = ["door", "chest", "zone", "custom"];
+                if (validTypes.indexOf(eventType) === -1) { return; }
+                this.triggers.set(id, {
+                    id: id,
+                    x: x,
+                    y: y,
+                    w: w,
+                    h: h,
+                    eventType: eventType,
+                    payload: payload !== undefined ? payload : null
+                });
+            };
+
+            /**
+             * Checks all trigger zones against an entity's current position.
+             * Req 6.2: Fire trigger event exactly once per entry
+             * Req 6.3: Do NOT re-fire while entity remains inside
+             * Req 6.4: Fire again on exit and re-entry
+             */
+            CollisionEngineClass.prototype.checkTriggers = function(entity) {
+                var events = [];
+                if (!entity || !entity.id) { return events; }
+
+                // Get or create entity's trigger state map (triggerId -> boolean "inside")
+                var entityId = entity.id;
+                if (!this.entityTriggerState.has(entityId)) {
+                    this.entityTriggerState.set(entityId, new Map());
+                }
+                var triggerState = this.entityTriggerState.get(entityId);
+
+                var self = this;
+                this.triggers.forEach(function(trigger, triggerId) {
+                    // AABB overlap check: entity vs trigger zone
+                    var overlaps = (entity.x < trigger.x + trigger.w) &&
+                                   (entity.x + entity.w > trigger.x) &&
+                                   (entity.y < trigger.y + trigger.h) &&
+                                   (entity.y + entity.h > trigger.y);
+
+                    var wasInside = triggerState.get(triggerId) || false;
+
+                    if (overlaps && !wasInside) {
+                        // Req 6.2: Entity just entered - fire event once
+                        triggerState.set(triggerId, true);
+                        events.push({
+                            triggerId: triggerId,
+                            eventType: trigger.eventType,
+                            payload: trigger.payload
+                        });
+                    } else if (!overlaps && wasInside) {
+                        // Req 6.4: Entity exited - mark as outside (allow re-fire on next entry)
+                        triggerState.set(triggerId, false);
+                    }
+                    // Req 6.3: If overlaps && wasInside, do nothing (no re-fire)
+                });
+
+                return events;
+            };
+
+            return CollisionEngineClass;
+        })();
+
+        var collisionEngine = new CollisionEngine();
+
+        // --- 8.7 PERFORMANCE CACHE SYSTEM ---
+        var PerfCache = (function() {
+            var DEFAULT_MAX_CACHE_ENTRIES = 128;
+            var DEFAULT_ROTATION_BUCKETS = 32;
+
+            function PerfCacheClass(maxCacheSize, rotationBuckets) {
+                this.MAX_CACHE_ENTRIES = (maxCacheSize !== undefined && maxCacheSize > 0) ? maxCacheSize : DEFAULT_MAX_CACHE_ENTRIES;
+                this.ROTATION_BUCKETS = DEFAULT_ROTATION_BUCKETS;
+                this.setRotationBuckets(rotationBuckets !== undefined ? rotationBuckets : DEFAULT_ROTATION_BUCKETS);
+
+                this.cache = new Map();    // key -> OffscreenCanvas
+                this.lruList = [];         // Array used as ordered list: front = oldest, end = most recent
+                this.stats = { hits: 0, misses: 0, evictions: 0 };
+            }
+
+            /**
+             * Set the number of rotation quantization buckets.
+             * Valid range: 4–360. Values outside range are clamped.
+             * Req 7.4: Configurable buckets (4–360, default 32)
+             */
+            PerfCacheClass.prototype.setRotationBuckets = function(count) {
+                count = Math.round(count);
+                if (count < 4) count = 4;
+                if (count > 360) count = 360;
+                this.ROTATION_BUCKETS = count;
+            };
+
+            /**
+             * Quantizes a rotation angle (radians) to the nearest bucket index.
+             * Formula: Math.round(((rotation % (2*PI)) + 2*PI) % (2*PI) / (2*PI) * ROTATION_BUCKETS) % ROTATION_BUCKETS
+             * Req 7.4: Map each input angle to the nearest bucket
+             */
+            PerfCacheClass.prototype._quantizeRotation = function(rotation) {
+                var TWO_PI = Math.PI * 2;
+                var normalized = ((rotation % TWO_PI) + TWO_PI) % TWO_PI;
+                var bucket = Math.round(normalized / TWO_PI * this.ROTATION_BUCKETS) % this.ROTATION_BUCKETS;
+                return bucket;
+            };
+
+            /**
+             * Generates a deterministic cache key from assetId, rotation bucket, and scale.
+             * Req 7.5: Identical inputs produce same key, different inputs produce different keys.
+             * Format: "${assetId}_${bucket}_${scale.toFixed(1)}"
+             */
+            PerfCacheClass.prototype._generateKey = function(assetId, rotation, scale) {
+                var bucket = this._quantizeRotation(rotation);
+                return assetId + '_' + bucket + '_' + scale.toFixed(1);
+            };
+
+            /**
+             * Retrieves a cached sprite for the given asset/rotation/scale.
+             * Req 7.2: On cache hit, return stored bitmap and mark as most-recently-used.
+             * Req 7.3: On miss, return null without error.
+             */
+            PerfCacheClass.prototype.getCachedSprite = function(assetId, rotation, scale) {
+                var key = this._generateKey(assetId, rotation, scale);
+
+                if (this.cache.has(key)) {
+                    // Cache hit: move to end of LRU list (most recent)
+                    var idx = this.lruList.indexOf(key);
+                    if (idx !== -1) {
+                        this.lruList.splice(idx, 1);
+                    }
+                    this.lruList.push(key);
+                    this.stats.hits++;
+                    return this.cache.get(key);
+                }
+
+                // Cache miss
+                this.stats.misses++;
+                return null;
+            };
+
+            /**
+             * Stores a rendered sprite canvas in the cache.
+             * Req 7.1: Store rendered sprite as OffscreenCanvas keyed by assetId, quantized rotation, quantized scale.
+             * Req 8.1: Max cache size never exceeded.
+             * Req 8.2: On capacity, evict LRU entry, increment eviction count, then insert new entry.
+             */
+            PerfCacheClass.prototype.cacheSprite = function(assetId, rotation, scale, canvas) {
+                var key = this._generateKey(assetId, rotation, scale);
+
+                // If key already exists, update it and refresh LRU position
+                if (this.cache.has(key)) {
+                    var idx = this.lruList.indexOf(key);
+                    if (idx !== -1) {
+                        this.lruList.splice(idx, 1);
+                    }
+                    this.cache.set(key, canvas);
+                    this.lruList.push(key);
+                    return;
+                }
+
+                // Evict LRU entries if at capacity (Req 8.1, 8.2)
+                while (this.cache.size >= this.MAX_CACHE_ENTRIES) {
+                    var oldest = this.lruList.shift(); // Remove from front (oldest)
+                    if (oldest !== undefined) {
+                        this.cache.delete(oldest);
+                        this.stats.evictions++;
+                    }
+                }
+
+                // Insert new entry
+                this.cache.set(key, canvas);
+                this.lruList.push(key);
+            };
+
+            /**
+             * Returns cache performance statistics.
+             * Req 8.6: Track hit, miss, eviction counts; expose via getCacheStats()
+             * Returns {hits, misses, evictions, size, maxSize}
+             */
+            PerfCacheClass.prototype.getCacheStats = function() {
+                return {
+                    hits: this.stats.hits,
+                    misses: this.stats.misses,
+                    evictions: this.stats.evictions,
+                    size: this.cache.size,
+                    maxSize: this.MAX_CACHE_ENTRIES
+                };
+            };
+
+            /**
+             * Removes all cache entries for a specific asset.
+             * Req 8.3: Remove all entries for that asset from cache and LRU without modifying eviction count.
+             * Req 8.4: If no entries exist, return without error or modifying state.
+             */
+            PerfCacheClass.prototype.invalidateAsset = function(assetId) {
+                var prefix = assetId + '_';
+                var keysToRemove = [];
+                this.cache.forEach(function(value, key) {
+                    if (key.indexOf(prefix) === 0) {
+                        keysToRemove.push(key);
+                    }
+                });
+
+                for (var i = 0; i < keysToRemove.length; i++) {
+                    this.cache.delete(keysToRemove[i]);
+                    var idx = this.lruList.indexOf(keysToRemove[i]);
+                    if (idx !== -1) {
+                        this.lruList.splice(idx, 1);
+                    }
+                }
+            };
+
+            /**
+             * Removes all entries and resets all statistics.
+             * Req 8.5: Remove all entries from cache and LRU, reset hit/miss/eviction counts to zero.
+             */
+            PerfCacheClass.prototype.invalidateAll = function() {
+                this.cache.clear();
+                this.lruList = [];
+                this.stats.hits = 0;
+                this.stats.misses = 0;
+                this.stats.evictions = 0;
+            };
+
+            return PerfCacheClass;
+        })();
+
+        var perfCache = new PerfCache();
+
+        // --- 8.8 GAMEPLAY LOGIC & TEMPLATES ---
+        var GameplayTemplates = (function() {
+            var SUPPORTED_TRANSITIONS = ["fade", "wipe_left", "wipe_right", "iris_close", "iris_open"];
+
+            function GameplayTemplatesClass() {
+                this._transitioning = false;
+                this._transitionType = "";
+                this._transitionDuration = 0;
+                this._transitionElapsed = 0;
+                this._transitionCallback = "";
+                this._combatEntities = new Map();
+
+                // Scene/Screen Management state (Req 10.1–10.6)
+                this._screens = new Map();        // id -> {id, enterFn, updateFn, exitFn}
+                this._currentScreen = null;       // currently active screen ID
+                this._pendingScreen = null;       // screen to switch to after transition completes
+            }
+
+            /**
+             * Starts a screen transition effect.
+             * Req 9.1: Valid type and duration [0.1, 5.0] renders transition animation over canvas.
+             * Req 9.6: Ignore call with unsupported type.
+             * Req 9.7: Ignore call while transition already active.
+             */
+            GameplayTemplatesClass.prototype.startTransition = function(type, duration, callbackName) {
+                // Req 9.7: Ignore if already transitioning
+                if (this._transitioning) { return; }
+
+                // Req 9.6: Ignore unsupported types
+                if (SUPPORTED_TRANSITIONS.indexOf(type) === -1) { return; }
+
+                // Validate duration in [0.1, 5.0]
+                if (typeof duration !== 'number' || isNaN(duration)) { return; }
+                if (duration < 0.1 || duration > 5.0) { return; }
+
+                // Start the transition
+                this._transitioning = true;
+                this._transitionType = type;
+                this._transitionDuration = duration;
+                this._transitionElapsed = 0;
+                this._transitionCallback = callbackName || "";
+            };
+
+            /**
+             * Returns true while a transition is active.
+             * Req 9.2: is_transitioning() returns true while active.
+             */
+            GameplayTemplatesClass.prototype.isTransitioning = function() {
+                return this._transitioning;
+            };
+
+            /**
+             * Advances the transition animation and draws the overlay.
+             * Called from the game loop after the Python update/render.
+             * Req 9.5: Game update loop continues during transitions.
+             * Req 9.3: On completion, invoke named Python callback and set is_transitioning to false.
+             * Req 9.8: If callback doesn't exist, set is_transitioning to false without error.
+             */
+            GameplayTemplatesClass.prototype.updateTransition = function(dt) {
+                if (!this._transitioning) { return; }
+
+                this._transitionElapsed += dt;
+                var progress = Math.min(this._transitionElapsed / this._transitionDuration, 1.0);
+
+                // Draw the transition overlay onto the game canvas
+                this._renderTransitionOverlay(progress);
+
+                // Check if transition is complete
+                if (this._transitionElapsed >= this._transitionDuration) {
+                    var callbackName = this._transitionCallback;
+
+                    // Reset state
+                    this._transitioning = false;
+                    this._transitionType = "";
+                    this._transitionDuration = 0;
+                    this._transitionElapsed = 0;
+                    this._transitionCallback = "";
+
+                    // Handle internal screen switch completion
+                    if (callbackName === "__internal_screen_switch__") {
+                        this._completeScreenSwitch();
+                        return;
+                    }
+
+                    // Req 9.3: Invoke named Python callback on completion
+                    // Req 9.8: If callback doesn't exist, no error
+                    if (callbackName) {
+                        try {
+                            var module = __BRYTHON__.$module_dict.__main__;
+                            if (module && module[callbackName]) {
+                                module[callbackName]();
+                            }
+                        } catch(e) {
+                            // Silently ignore if callback doesn't exist or fails
+                        }
+                    }
+                }
+            };
+
+            /**
+             * Renders the appropriate transition effect overlay on the game canvas.
+             */
+            GameplayTemplatesClass.prototype._renderTransitionOverlay = function(progress) {
+                var ctx = gCtx;
+                var w = gCanvas.width;
+                var h = gCanvas.height;
+
+                switch (this._transitionType) {
+                    case "fade":
+                        // Fade to black: fill with increasing alpha
+                        ctx.save();
+                        ctx.globalAlpha = progress;
+                        ctx.fillStyle = "#000000";
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.restore();
+                        break;
+
+                    case "wipe_left":
+                        // Black rectangle sweeps from left to right
+                        ctx.fillStyle = "#000000";
+                        ctx.fillRect(0, 0, Math.ceil(w * progress), h);
+                        break;
+
+                    case "wipe_right":
+                        // Black rectangle sweeps from right to left
+                        ctx.fillStyle = "#000000";
+                        var wipeWidth = Math.ceil(w * progress);
+                        ctx.fillRect(w - wipeWidth, 0, wipeWidth, h);
+                        break;
+
+                    case "iris_close":
+                        // Shrinking circle mask: fill black everywhere except a shrinking circle
+                        var maxRadius = Math.sqrt((w / 2) * (w / 2) + (h / 2) * (h / 2));
+                        var radius = maxRadius * (1.0 - progress);
+                        ctx.save();
+                        ctx.fillStyle = "#000000";
+                        ctx.beginPath();
+                        ctx.rect(0, 0, w, h);
+                        ctx.arc(w / 2, h / 2, Math.max(radius, 0), 0, Math.PI * 2, true);
+                        ctx.closePath();
+                        ctx.fill("evenodd");
+                        ctx.restore();
+                        break;
+
+                    case "iris_open":
+                        // Expanding circle mask: fill black everywhere except a growing circle
+                        var maxRadiusOpen = Math.sqrt((w / 2) * (w / 2) + (h / 2) * (h / 2));
+                        var radiusOpen = maxRadiusOpen * progress;
+                        ctx.save();
+                        ctx.fillStyle = "#000000";
+                        ctx.beginPath();
+                        ctx.rect(0, 0, w, h);
+                        ctx.arc(w / 2, h / 2, Math.max(radiusOpen, 0), 0, Math.PI * 2, true);
+                        ctx.closePath();
+                        ctx.fill("evenodd");
+                        ctx.restore();
+                        break;
+                }
+            };
+
+            // --- SCENE/SCREEN MANAGEMENT ---
+
+            /**
+             * Registers a screen definition for later activation.
+             * Req 10.1: Store screen definition, overwrite on duplicate ID.
+             * enterFn, updateFn, exitFn are names of Python callback functions (strings).
+             */
+            GameplayTemplatesClass.prototype.registerScreen = function(id, enterFn, updateFn, exitFn) {
+                this._screens.set(id, {
+                    id: id,
+                    enterFn: enterFn || "",
+                    updateFn: updateFn || "",
+                    exitFn: exitFn || ""
+                });
+            };
+
+            /**
+             * Switches to a new screen with a transition effect.
+             * Req 10.2: If current screen active → exit callback → transition → enter callback → update_fn per frame
+             * Req 10.3: If no current screen → skip exit → transition → enter callback → update_fn per frame
+             * Req 10.5: Silently ignore unregistered screen IDs
+             */
+            GameplayTemplatesClass.prototype.switchScreen = function(id, transitionType) {
+                // Req 10.5: Silently ignore unregistered screen IDs
+                if (!this._screens.has(id)) { return; }
+
+                var self = this;
+
+                // Req 10.2: If current screen is active, invoke its exit callback
+                if (this._currentScreen !== null) {
+                    var currentScreenDef = this._screens.get(this._currentScreen);
+                    if (currentScreenDef && currentScreenDef.exitFn) {
+                        this._invokePythonCallback(currentScreenDef.exitFn);
+                    }
+                }
+
+                // Store the pending screen to switch to after transition completes
+                this._pendingScreen = id;
+
+                // Determine a valid transition type; if invalid/missing, complete switch immediately
+                var validTransition = transitionType && SUPPORTED_TRANSITIONS.indexOf(transitionType) !== -1;
+
+                if (validTransition && !this._transitioning) {
+                    // Use startTransition with an internal callback mechanism
+                    // We override _transitionCallback with a special marker to handle the screen switch
+                    this._transitioning = true;
+                    this._transitionType = transitionType;
+                    this._transitionDuration = 0.5; // Default transition duration for screen switches
+                    this._transitionElapsed = 0;
+                    this._transitionCallback = "__internal_screen_switch__";
+                } else {
+                    // No valid transition or transition already active: complete switch immediately
+                    this._completeScreenSwitch();
+                }
+            };
+
+            /**
+             * Completes the screen switch after transition (or immediately if no transition).
+             * Invokes the new screen's enter callback and sets it as current.
+             */
+            GameplayTemplatesClass.prototype._completeScreenSwitch = function() {
+                if (this._pendingScreen === null) { return; }
+
+                var newScreenId = this._pendingScreen;
+                this._pendingScreen = null;
+
+                var screenDef = this._screens.get(newScreenId);
+                if (!screenDef) { return; }
+
+                // Set as current screen
+                this._currentScreen = newScreenId;
+
+                // Invoke enter callback
+                if (screenDef.enterFn) {
+                    this._invokePythonCallback(screenDef.enterFn);
+                }
+            };
+
+            /**
+             * Returns the currently active screen ID, or null if no screen is active.
+             * Req 10.4: get_current_screen() returns active screen ID or null.
+             */
+            GameplayTemplatesClass.prototype.getCurrentScreen = function() {
+                return this._currentScreen;
+            };
+
+            /**
+             * If a screen is active, invoke its updateFn once per game loop frame.
+             * Req 10.6: While active, update_fn called once per game loop frame.
+             */
+            GameplayTemplatesClass.prototype.updateScreens = function(dt) {
+                if (this._currentScreen === null) { return; }
+                var screenDef = this._screens.get(this._currentScreen);
+                if (screenDef && screenDef.updateFn) {
+                    this._invokePythonCallback(screenDef.updateFn, dt);
+                }
+            };
+
+            /**
+             * Invokes a named Python callback. Silently ignores if callback doesn't exist.
+             * Optionally passes dt argument to the callback.
+             */
+            GameplayTemplatesClass.prototype._invokePythonCallback = function(callbackName, dt) {
+                try {
+                    var module = __BRYTHON__.$module_dict.__main__;
+                    if (module && module[callbackName]) {
+                        if (dt !== undefined) {
+                            module[callbackName](dt);
+                        } else {
+                            module[callbackName]();
+                        }
+                    }
+                } catch(e) {
+                    // Silently ignore if callback doesn't exist or fails
+                }
+            };
+
+            // --- COMBAT SYSTEM PRIMITIVES ---
+
+            /**
+             * Creates or overwrites a combat entity with validated stats.
+             * Req 12.1: hp in [1, 99999], attack in [0, 99999], defense in [0, 99999], overwrite on duplicate ID.
+             */
+            GameplayTemplatesClass.prototype.createCombatEntity = function(id, hp, attack, defense) {
+                // Validate numeric types
+                if (typeof hp !== 'number' || typeof attack !== 'number' || typeof defense !== 'number') return;
+                if (!isFinite(hp) || !isFinite(attack) || !isFinite(defense)) return;
+                // Validate ranges
+                if (hp < 1 || hp > 99999) return;
+                if (attack < 0 || attack > 99999) return;
+                if (defense < 0 || defense > 99999) return;
+                // Store (overwrite on duplicate)
+                this._combatEntities.set(id, { hp: hp, attack: attack, defense: defense });
+            };
+
+            /**
+             * Calculates damage = max(1, attacker.attack - defender.defense).
+             * Req 12.2: Returns numeric damage value floored at minimum 1.
+             * Req 12.4: Returns 0 for unregistered IDs.
+             */
+            GameplayTemplatesClass.prototype.calculateDamage = function(attackerId, defenderId) {
+                var attacker = this._combatEntities.get(attackerId);
+                var defender = this._combatEntities.get(defenderId);
+                if (!attacker || !defender) return 0;
+                return Math.max(1, attacker.attack - defender.defense);
+            };
+
+            /**
+             * Reduces entity HP by amount, clamping at 0.
+             * Req 12.3: Reduce HP by amount, clamp at 0.
+             * Req 12.4: Returns 0 for unregistered IDs.
+             */
+            GameplayTemplatesClass.prototype.applyDamage = function(entityId, amount) {
+                var entity = this._combatEntities.get(entityId);
+                if (!entity) return 0;
+                if (typeof amount !== 'number' || !isFinite(amount) || amount < 0) return 0;
+                entity.hp = Math.max(0, entity.hp - amount);
+                return entity.hp;
+            };
+
+            /**
+             * Returns combat entity stats {hp, attack, defense}.
+             * Req 12.5: Returns object with current stats, or null if not registered.
+             */
+            GameplayTemplatesClass.prototype.getCombatEntity = function(id) {
+                var entity = this._combatEntities.get(id);
+                if (!entity) return null;
+                return { hp: entity.hp, attack: entity.attack, defense: entity.defense };
+            };
+
+            // --- Procedural Generation Helpers ---
+
+            /**
+             * Seeded pseudo-random number generator (mulberry32 variant).
+             * Req 13.2: Same seed always produces identical output sequence.
+             */
+            function seededRNG(seed) {
+                var s = seed | 0;
+                return function() {
+                    s = s + 0x6D2B79F5 | 0;
+                    var t = Math.imul(s ^ s >>> 15, 1 | s);
+                    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+                    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+                };
+            }
+
+            /**
+             * Generates a deterministic 2D dungeon grid using seeded random room placement.
+             * Req 13.1: Valid dimensions 5–128, returns grid of "wall"/"floor"/"corridor" cells.
+             * Req 13.2: Same seed/width/height = identical grid (byte-level equality).
+             * Req 13.4: Return empty grid for invalid dimensions or non-numeric seed.
+             */
+            GameplayTemplatesClass.prototype.generateDungeon = function(width, height, seed) {
+                // Req 13.4: Validate inputs
+                if (typeof width !== 'number' || typeof height !== 'number' || typeof seed !== 'number') {
+                    return [];
+                }
+                if (isNaN(width) || isNaN(height) || isNaN(seed)) {
+                    return [];
+                }
+                width = Math.floor(width);
+                height = Math.floor(height);
+                if (width < 5 || width > 128 || height < 5 || height > 128) {
+                    return [];
+                }
+
+                // Store the seed for later use by spawnEntitiesInRegion
+                this._lastDungeonSeed = seed;
+                this._lastDungeonGrid = null;
+
+                var rng = seededRNG(seed);
+
+                // Step 1: Initialize grid filled with "wall"
+                var grid = [];
+                for (var r = 0; r < height; r++) {
+                    grid[r] = [];
+                    for (var c = 0; c < width; c++) {
+                        grid[r][c] = "wall";
+                    }
+                }
+
+                // Step 2: Place random rooms (rectangles of "floor")
+                var numRooms = Math.max(2, Math.floor(rng() * Math.min(width, height) / 3) + 2);
+                var rooms = [];
+
+                for (var i = 0; i < numRooms; i++) {
+                    var roomW = Math.floor(rng() * (Math.min(width, 12) - 3)) + 3;
+                    var roomH = Math.floor(rng() * (Math.min(height, 12) - 3)) + 3;
+                    var roomX = Math.floor(rng() * (width - roomW - 2)) + 1;
+                    var roomY = Math.floor(rng() * (height - roomH - 2)) + 1;
+
+                    // Check for overlap with existing rooms (with 1-tile buffer)
+                    var overlaps = false;
+                    for (var ri = 0; ri < rooms.length; ri++) {
+                        var other = rooms[ri];
+                        if (roomX <= other.x + other.w && roomX + roomW >= other.x &&
+                            roomY <= other.y + other.h && roomY + roomH >= other.y) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+
+                    if (!overlaps) {
+                        rooms.push({ x: roomX, y: roomY, w: roomW, h: roomH });
+                        // Fill room with "floor"
+                        for (var ry = roomY; ry < roomY + roomH && ry < height; ry++) {
+                            for (var rx = roomX; rx < roomX + roomW && rx < width; rx++) {
+                                grid[ry][rx] = "floor";
+                            }
+                        }
+                    }
+                }
+
+                // Ensure we have at least 2 rooms (retry with smaller sizes if needed)
+                if (rooms.length < 2) {
+                    var smallW = Math.min(3, width - 2);
+                    var smallH = Math.min(3, height - 2);
+                    if (rooms.length === 0) {
+                        rooms.push({ x: 1, y: 1, w: smallW, h: smallH });
+                        for (var fy = 1; fy < 1 + smallH && fy < height; fy++) {
+                            for (var fx = 1; fx < 1 + smallW && fx < width; fx++) {
+                                grid[fy][fx] = "floor";
+                            }
+                        }
+                    }
+                    if (rooms.length < 2) {
+                        var rx2 = Math.max(1, width - smallW - 1);
+                        var ry2 = Math.max(1, height - smallH - 1);
+                        rooms.push({ x: rx2, y: ry2, w: smallW, h: smallH });
+                        for (var fy2 = ry2; fy2 < ry2 + smallH && fy2 < height; fy2++) {
+                            for (var fx2 = rx2; fx2 < rx2 + smallW && fx2 < width; fx2++) {
+                                grid[fy2][fx2] = "floor";
+                            }
+                        }
+                    }
+                }
+
+                // Step 3: Connect rooms with "corridor" paths (L-shaped corridors)
+                for (var ci = 0; ci < rooms.length - 1; ci++) {
+                    var roomA = rooms[ci];
+                    var roomB = rooms[ci + 1];
+
+                    // Center points of each room
+                    var ax = Math.floor(roomA.x + roomA.w / 2);
+                    var ay = Math.floor(roomA.y + roomA.h / 2);
+                    var bx = Math.floor(roomB.x + roomB.w / 2);
+                    var by = Math.floor(roomB.y + roomB.h / 2);
+
+                    // Decide randomly whether to go horizontal-first or vertical-first
+                    if (rng() < 0.5) {
+                        // Horizontal then vertical
+                        this._carveCorridor(grid, ax, ay, bx, ay, width, height);
+                        this._carveCorridor(grid, bx, ay, bx, by, width, height);
+                    } else {
+                        // Vertical then horizontal
+                        this._carveCorridor(grid, ax, ay, ax, by, width, height);
+                        this._carveCorridor(grid, ax, by, bx, by, width, height);
+                    }
+                }
+
+                this._lastDungeonGrid = grid;
+                return grid;
+            };
+
+            /**
+             * Carves a corridor between two points (only carves through "wall" cells as "corridor").
+             */
+            GameplayTemplatesClass.prototype._carveCorridor = function(grid, x1, y1, x2, y2, gridWidth, gridHeight) {
+                var dx = (x2 > x1) ? 1 : (x2 < x1) ? -1 : 0;
+                var dy = (y2 > y1) ? 1 : (y2 < y1) ? -1 : 0;
+
+                var cx = x1;
+                var cy = y1;
+
+                // Carve along X axis
+                while (cx !== x2) {
+                    if (cx >= 0 && cx < gridWidth && cy >= 0 && cy < gridHeight) {
+                        if (grid[cy][cx] === "wall") {
+                            grid[cy][cx] = "corridor";
+                        }
+                    }
+                    cx += dx;
+                }
+
+                // Carve along Y axis
+                while (cy !== y2) {
+                    if (cx >= 0 && cx < gridWidth && cy >= 0 && cy < gridHeight) {
+                        if (grid[cy][cx] === "wall") {
+                            grid[cy][cx] = "corridor";
+                        }
+                    }
+                    cy += dy;
+                }
+
+                // Mark final cell
+                if (cx >= 0 && cx < gridWidth && cy >= 0 && cy < gridHeight) {
+                    if (grid[cy][cx] === "wall") {
+                        grid[cy][cx] = "corridor";
+                    }
+                }
+            };
+
+            /**
+             * Spawns entities at floor cells within a region, using the last dungeon's seed.
+             * Req 13.3: Identical inputs produce identical positions.
+             * Req 13.5: Cap spawn count at available floor cells in region.
+             */
+            GameplayTemplatesClass.prototype.spawnEntitiesInRegion = function(templateId, count, region) {
+                // Validate inputs
+                if (!region || typeof region !== 'object') { return []; }
+                if (typeof region.x !== 'number' || typeof region.y !== 'number' ||
+                    typeof region.w !== 'number' || typeof region.h !== 'number') { return []; }
+                if (typeof count !== 'number' || isNaN(count) || count < 1) { return []; }
+                if (!this._lastDungeonGrid || this._lastDungeonGrid.length === 0) { return []; }
+
+                count = Math.min(Math.floor(count), 256);
+
+                var grid = this._lastDungeonGrid;
+                var gridHeight = grid.length;
+                var gridWidth = grid[0].length;
+
+                // Find all "floor" cells within region bounds
+                var floorCells = [];
+                var startY = Math.max(0, Math.floor(region.y));
+                var endY = Math.min(gridHeight, Math.floor(region.y + region.h));
+                var startX = Math.max(0, Math.floor(region.x));
+                var endX = Math.min(gridWidth, Math.floor(region.x + region.w));
+
+                for (var ry = startY; ry < endY; ry++) {
+                    for (var rx = startX; rx < endX; rx++) {
+                        if (grid[ry][rx] === "floor") {
+                            floorCells.push({ x: rx, y: ry });
+                        }
+                    }
+                }
+
+                // Req 13.5: Cap at available floor cells
+                var actualCount = Math.min(count, floorCells.length);
+                if (actualCount === 0) { return []; }
+
+                // Use seeded PRNG derived from last dungeon seed for deterministic shuffle
+                var spawnRng = seededRNG(this._lastDungeonSeed + 7919);
+
+                // Fisher-Yates shuffle using seeded RNG
+                for (var si = floorCells.length - 1; si > 0; si--) {
+                    var sj = Math.floor(spawnRng() * (si + 1));
+                    var temp = floorCells[si];
+                    floorCells[si] = floorCells[sj];
+                    floorCells[sj] = temp;
+                }
+
+                // Select first `actualCount` cells and return entity positions
+                var result = [];
+                for (var ei = 0; ei < actualCount; ei++) {
+                    result.push({
+                        templateId: templateId,
+                        x: floorCells[ei].x,
+                        y: floorCells[ei].y
+                    });
+                }
+
+                return result;
+            };
+
+            return GameplayTemplatesClass;
+        })();
+
+        var gameplayTemplates = new GameplayTemplates();
+
+        // --- 8.9 TIMER & DELAYED EVENT SYSTEM ---
+        var TimerSystem = (function() {
+            var MAX_TIMERS = 64;
+            var MIN_DURATION = 0.016;
+            var MAX_DURATION = 3600;
+
+            function TimerSystemClass() {
+                this.timers = new Map(); // id -> {id, duration, callbackName, repeat, elapsed}
+            }
+
+            /**
+             * Registers a timer that invokes a named Python callback after a specified duration.
+             * Req 14.1: duration in [0.016, 3600], invoke callback within one frame of elapsed duration
+             * Req 14.5: Duplicate ID overwrites (cancel existing, replace with new)
+             * Req 14.7: Max 64 concurrent timers; silently reject if exceeded
+             */
+            TimerSystemClass.prototype.setTimer = function(id, duration, callbackName, repeat) {
+                // Validate duration range - silently reject if out of range
+                if (typeof duration !== 'number' || isNaN(duration)) { return; }
+                if (duration < MIN_DURATION || duration > MAX_DURATION) { return; }
+
+                // Req 14.7: Reject if at max capacity and ID doesn't already exist
+                if (this.timers.size >= MAX_TIMERS && !this.timers.has(id)) { return; }
+
+                // Req 14.5: If ID exists, overwrite (effectively cancel and replace)
+                this.timers.set(id, {
+                    id: id,
+                    duration: duration,
+                    callbackName: callbackName,
+                    repeat: !!repeat,
+                    elapsed: 0
+                });
+            };
+
+            /**
+             * Cancels a timer and prevents future invocations.
+             * Req 14.3: clear_timer(id) cancels timer
+             * Req 14.4: Non-existent ID silently ignored
+             */
+            TimerSystemClass.prototype.clearTimer = function(id) {
+                this.timers.delete(id);
+            };
+
+            /**
+             * Advances all active timers by dt seconds. Called from the main game loop.
+             * Req 14.1: Invoke callback within one frame (~16ms) of elapsed duration
+             * Req 14.2: Repeating timers subtract duration from elapsed (no drift)
+             * Req 14.6: If callback doesn't exist, skip invocation; if repeating, continue scheduling
+             */
+            TimerSystemClass.prototype.updateTimers = function(dt) {
+                var timersToRemove = [];
+                var self = this;
+
+                this.timers.forEach(function(timer, id) {
+                    timer.elapsed += dt;
+
+                    if (timer.elapsed >= timer.duration) {
+                        if (timer.repeat) {
+                            // Req 14.2: Subtract duration to accumulate no drift
+                            timer.elapsed -= timer.duration;
+                            // Invoke callback (Req 14.6: skip if doesn't exist, continue scheduling)
+                            self._invokeCallback(timer.callbackName);
+                        } else {
+                            // Non-repeating: invoke callback and mark for removal
+                            self._invokeCallback(timer.callbackName);
+                            timersToRemove.push(id);
+                        }
+                    }
+                });
+
+                // Remove non-repeating timers that have fired
+                for (var i = 0; i < timersToRemove.length; i++) {
+                    this.timers.delete(timersToRemove[i]);
+                }
+            };
+
+            /**
+             * Attempts to invoke a Python callback by name.
+             * Req 14.6: If callback doesn't exist or is not callable, skip without error.
+             */
+            TimerSystemClass.prototype._invokeCallback = function(callbackName) {
+                try {
+                    var module = __BRYTHON__.$module_dict.__main__;
+                    if (module && module[callbackName]) {
+                        module[callbackName]();
+                    }
+                } catch(e) {
+                    // Silently ignore if callback doesn't exist or fails
+                }
+            };
+
+            return TimerSystemClass;
+        })();
+
+        var timerSystem = new TimerSystem();
+
+        // --- 8.10 P2P MULTIPLAYER ---
+        var P2PMultiplayer = (function() {
+            var MAX_PEERS = 4;
+            var CONNECTION_TIMEOUT_MS = 10000;
+            var PEER_MONITOR_INTERVAL_MS = 1500;
+            var ROOM_CODE_REGEX = /^[a-zA-Z0-9]{4,8}$/;
+
+            var RATE_LIMIT_MAX = 30; // Max messages per second per peer (Req 16.4)
+            var RATE_LIMIT_WINDOW_MS = 1000; // 1 second window
+            var MAX_BROADCAST_BYTES = 1024; // Max serialized state size (Req 16.1)
+
+            function P2PMultiplayerClass(signalingServerUrl) {
+                this._signalingServerUrl = signalingServerUrl || null;
+                this._state = "disconnected"; // "disconnected" | "connecting" | "hosting" | "joined"
+                this._peers = new Map(); // peerId -> { connection: RTCPeerConnection, dataChannel: RTCDataChannel, state: string }
+                this._roomCode = null;
+                this._localConnection = null;
+
+                // Callbacks
+                this._onConnectionSuccess = null;
+                this._onConnectionError = null;
+                this._onPeerDisconnect = null;
+
+                // P2P State Sync (Req 16.1-16.7)
+                this._onPeerState = null;
+                this._onMessage = new Map(); // type -> callback
+                this._rateLimitCounters = new Map(); // peerId -> { count, lastReset }
+
+                // Monitoring
+                this._monitorInterval = null;
+                this._connectionTimeout = null;
+            }
+
+            /**
+             * Validates room code format.
+             * Req 15.6: Room codes must be 4-8 alphanumeric chars.
+             */
+            P2PMultiplayerClass.prototype._validateRoomCode = function(roomCode) {
+                if (typeof roomCode !== 'string') return false;
+                return ROOM_CODE_REGEX.test(roomCode);
+            };
+
+            /**
+             * Creates an RTCPeerConnection with standard ICE config.
+             */
+            P2PMultiplayerClass.prototype._createPeerConnection = function(peerId) {
+                var self = this;
+                var config = {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                };
+
+                var pc = new RTCPeerConnection(config);
+
+                pc.oniceconnectionstatechange = function() {
+                    var state = pc.iceConnectionState;
+                    if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+                        self._handlePeerDisconnection(peerId);
+                    }
+                };
+
+                pc.onconnectionstatechange = function() {
+                    var state = pc.connectionState;
+                    if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+                        self._handlePeerDisconnection(peerId);
+                    }
+                };
+
+                // Handle incoming data channels from peers (host side)
+                pc.ondatachannel = function(event) {
+                    var channel = event.channel;
+                    channel.onmessage = function(msgEvent) {
+                        self._handleIncomingMessage(peerId, msgEvent);
+                    };
+                    // Store the data channel for the peer if we have a peer entry
+                    var peerEntry = self._peers.get(peerId);
+                    if (peerEntry && !peerEntry.dataChannel) {
+                        peerEntry.dataChannel = channel;
+                    }
+                };
+
+                return pc;
+            };
+
+            /**
+             * Creates a data channel on a peer connection.
+             * Req 15.3: Unreliable (UDP-like) delivery, max 16KB message size.
+             */
+            P2PMultiplayerClass.prototype._createDataChannel = function(pc, label, peerId) {
+                var self = this;
+                var channel = pc.createDataChannel(label || 'gameData', {
+                    ordered: false,
+                    maxRetransmits: 0 // unreliable, UDP-like
+                });
+
+                // Wire up incoming message handler for state sync (Req 16.2, 16.6)
+                channel.onmessage = function(event) {
+                    self._handleIncomingMessage(peerId || 'unknown', event);
+                };
+
+                return channel;
+            };
+
+            /**
+             * Handles unexpected peer disconnection.
+             * Req 15.8: Invoke on_peer_disconnect callback within 5s.
+             */
+            P2PMultiplayerClass.prototype._handlePeerDisconnection = function(peerId) {
+                if (!this._peers.has(peerId)) return;
+
+                var peer = this._peers.get(peerId);
+                // Close the connection if it's still open
+                if (peer.connection && peer.connection.connectionState !== 'closed') {
+                    try { peer.connection.close(); } catch(e) {}
+                }
+                this._peers.delete(peerId);
+
+                // Clean up rate limit counter for disconnected peer
+                this._rateLimitCounters.delete(peerId);
+
+                // Invoke callback (Req 15.8)
+                if (this._onPeerDisconnect) {
+                    try { this._onPeerDisconnect(peerId); } catch(e) {}
+                }
+
+                // If all peers disconnected while in "joined" state, return to disconnected
+                if (this._peers.size === 0 && this._state === 'joined') {
+                    this._state = 'disconnected';
+                }
+            };
+
+            /**
+             * Starts monitoring connected peers for unexpected disconnection.
+             * Checks every 1.5s for peer connection state changes.
+             * Req 15.8: Detect within 5s.
+             */
+            P2PMultiplayerClass.prototype._startPeerMonitor = function() {
+                var self = this;
+                if (this._monitorInterval) {
+                    clearInterval(this._monitorInterval);
+                }
+                this._monitorInterval = setInterval(function() {
+                    self._peers.forEach(function(peer, peerId) {
+                        if (peer.connection) {
+                            var connState = peer.connection.connectionState || peer.connection.iceConnectionState;
+                            if (connState === 'disconnected' || connState === 'failed' || connState === 'closed') {
+                                self._handlePeerDisconnection(peerId);
+                            }
+                        }
+                    });
+                }, PEER_MONITOR_INTERVAL_MS);
+            };
+
+            /**
+             * Stops the peer monitoring interval.
+             */
+            P2PMultiplayerClass.prototype._stopPeerMonitor = function() {
+                if (this._monitorInterval) {
+                    clearInterval(this._monitorInterval);
+                    this._monitorInterval = null;
+                }
+            };
+
+            /**
+             * Clears any active connection timeout.
+             */
+            P2PMultiplayerClass.prototype._clearConnectionTimeout = function() {
+                if (this._connectionTimeout) {
+                    clearTimeout(this._connectionTimeout);
+                    this._connectionTimeout = null;
+                }
+            };
+
+            /**
+             * Starts a connection timeout.
+             * Req 15.4: Timeout after 10s, invoke error callback, continue single-player.
+             */
+            P2PMultiplayerClass.prototype._startConnectionTimeout = function() {
+                var self = this;
+                this._clearConnectionTimeout();
+                this._connectionTimeout = setTimeout(function() {
+                    if (self._state === 'connecting') {
+                        self._state = 'disconnected';
+                        self._cleanupConnections();
+                        if (self._onConnectionError) {
+                            try { self._onConnectionError('Connection timed out after 10 seconds'); } catch(e) {}
+                        }
+                    }
+                }, CONNECTION_TIMEOUT_MS);
+            };
+
+            /**
+             * Cleans up all peer connections without notifying peers.
+             */
+            P2PMultiplayerClass.prototype._cleanupConnections = function() {
+                this._peers.forEach(function(peer) {
+                    if (peer.dataChannel) {
+                        try { peer.dataChannel.close(); } catch(e) {}
+                    }
+                    if (peer.connection) {
+                        try { peer.connection.close(); } catch(e) {}
+                    }
+                });
+                this._peers.clear();
+                if (this._localConnection) {
+                    try { this._localConnection.close(); } catch(e) {}
+                    this._localConnection = null;
+                }
+            };
+
+            /**
+             * Host a new session with the given room code.
+             * Req 15.1: Create RTCPeerConnection, register with signaling server, invoke success callback.
+             * Req 15.6: Validate room code first.
+             */
+            P2PMultiplayerClass.prototype.hostSession = function(roomCode) {
+                var self = this;
+
+                // Req 15.6: Validate room code
+                if (!this._validateRoomCode(roomCode)) {
+                    if (this._onConnectionError) {
+                        try { this._onConnectionError('Invalid room code: must be 4-8 alphanumeric characters'); } catch(e) {}
+                    }
+                    return;
+                }
+
+                // Can't host if already connected
+                if (this._state !== 'disconnected') {
+                    if (this._onConnectionError) {
+                        try { this._onConnectionError('Already in a session. Disconnect first.'); } catch(e) {}
+                    }
+                    return;
+                }
+
+                this._state = 'connecting';
+                this._roomCode = roomCode;
+
+                // Start connection timeout (Req 15.4)
+                this._startConnectionTimeout();
+
+                // Create local peer connection for hosting
+                this._localConnection = this._createPeerConnection('host-local');
+
+                // Placeholder signaling: In a real implementation, this would register
+                // the room code with a signaling server and wait for peers to connect.
+                // For now, we simulate successful hosting after connection setup.
+                // Simulate signaling server registration
+                setTimeout(function() {
+                    if (self._state === 'connecting') {
+                        self._clearConnectionTimeout();
+                        self._state = 'hosting';
+                        self._startPeerMonitor();
+                        if (self._onConnectionSuccess) {
+                            try { self._onConnectionSuccess(); } catch(e) {}
+                        }
+                    }
+                }, 100);
+            };
+
+            /**
+             * Join an existing session by room code.
+             * Req 15.2: Connect to host via signaling server, invoke success callback.
+             * Req 15.6: Validate room code first.
+             */
+            P2PMultiplayerClass.prototype.joinSession = function(roomCode) {
+                var self = this;
+
+                // Req 15.6: Validate room code
+                if (!this._validateRoomCode(roomCode)) {
+                    if (this._onConnectionError) {
+                        try { this._onConnectionError('Invalid room code: must be 4-8 alphanumeric characters'); } catch(e) {}
+                    }
+                    return;
+                }
+
+                // Can't join if already connected
+                if (this._state !== 'disconnected') {
+                    if (this._onConnectionError) {
+                        try { this._onConnectionError('Already in a session. Disconnect first.'); } catch(e) {}
+                    }
+                    return;
+                }
+
+                this._state = 'connecting';
+                this._roomCode = roomCode;
+
+                // Start connection timeout (Req 15.4)
+                this._startConnectionTimeout();
+
+                // Create peer connection
+                var pc = this._createPeerConnection('host');
+                var dataChannel = this._createDataChannel(pc, 'gameData', 'host');
+
+                // Placeholder signaling: In a real implementation, this would look up
+                // the host by room code via the signaling server and perform ICE/SDP exchange.
+                // For now, we simulate the connection attempt.
+                setTimeout(function() {
+                    if (self._state === 'connecting') {
+                        self._clearConnectionTimeout();
+
+                        // Store peer entry
+                        self._peers.set('host', {
+                            connection: pc,
+                            dataChannel: dataChannel,
+                            state: 'connected'
+                        });
+
+                        self._state = 'joined';
+                        self._startPeerMonitor();
+                        if (self._onConnectionSuccess) {
+                            try { self._onConnectionSuccess(); } catch(e) {}
+                        }
+                    }
+                }, 100);
+            };
+
+            /**
+             * Disconnect from the current session.
+             * Req 15.5: Close all peer connections, notify peers, set state to "disconnected".
+             */
+            P2PMultiplayerClass.prototype.disconnect = function() {
+                this._clearConnectionTimeout();
+                this._stopPeerMonitor();
+
+                // Notify connected peers before closing (best-effort)
+                this._peers.forEach(function(peer) {
+                    if (peer.dataChannel && peer.dataChannel.readyState === 'open') {
+                        try {
+                            peer.dataChannel.send(JSON.stringify({ type: '__disconnect', reason: 'peer_left' }));
+                        } catch(e) {}
+                    }
+                });
+
+                // Clean up all connections
+                this._cleanupConnections();
+                this._state = 'disconnected';
+                this._roomCode = null;
+            };
+
+            /**
+             * Get the current connection state.
+             * Req 15.7: Returns "disconnected", "connecting", "hosting", or "joined".
+             */
+            P2PMultiplayerClass.prototype.getConnectionState = function() {
+                return this._state;
+            };
+
+            /**
+             * Get list of connected peer IDs.
+             */
+            P2PMultiplayerClass.prototype.getConnectedPeers = function() {
+                return Array.from(this._peers.keys());
+            };
+
+            /**
+             * Check if a new peer can be added (max 4).
+             * Req 15.3: Up to 4 simultaneous peers.
+             */
+            P2PMultiplayerClass.prototype.canAddPeer = function() {
+                return this._peers.size < MAX_PEERS;
+            };
+
+            /**
+             * Register callback for successful connection.
+             */
+            P2PMultiplayerClass.prototype.onConnectionSuccess = function(callback) {
+                this._onConnectionSuccess = callback;
+            };
+
+            /**
+             * Register callback for connection errors.
+             */
+            P2PMultiplayerClass.prototype.onConnectionError = function(callback) {
+                this._onConnectionError = callback;
+            };
+
+            /**
+             * Register callback for peer disconnection.
+             * Req 15.8: Called with peer ID within 5s of connection loss.
+             */
+            P2PMultiplayerClass.prototype.onPeerDisconnect = function(callback) {
+                this._onPeerDisconnect = callback;
+            };
+
+            // --- P2P State Synchronization (Req 16.1 - 16.7) ---
+
+            /**
+             * Checks if a message to a specific peer is within the rate limit.
+             * Req 16.4: Rate-limit outgoing messages to 30/sec per peer.
+             * Returns true if message can be sent, false if rate limited.
+             */
+            P2PMultiplayerClass.prototype._checkRateLimit = function(peerId) {
+                var now = Date.now();
+                var counter = this._rateLimitCounters.get(peerId);
+
+                if (!counter || (now - counter.lastReset) >= RATE_LIMIT_WINDOW_MS) {
+                    // Start new window
+                    this._rateLimitCounters.set(peerId, { count: 1, lastReset: now });
+                    return true;
+                }
+
+                if (counter.count >= RATE_LIMIT_MAX) {
+                    // Exceeded rate limit, drop message (Req 16.4)
+                    return false;
+                }
+
+                counter.count++;
+                return true;
+            };
+
+            /**
+             * Handles incoming messages from a peer data channel.
+             * Parses the message and invokes appropriate callbacks.
+             * Req 16.2: Invoke on_peer_state callback with sender entity_id and deserialized state.
+             * Req 16.6: Silently discard if no callback registered.
+             */
+            P2PMultiplayerClass.prototype._handleIncomingMessage = function(peerId, messageEvent) {
+                var data;
+                try {
+                    data = JSON.parse(messageEvent.data || messageEvent);
+                } catch(e) {
+                    return; // Silently discard unparseable messages
+                }
+
+                if (data.type === '__state') {
+                    // Peer state broadcast (Req 16.2, 16.6)
+                    if (this._onPeerState) {
+                        try { this._onPeerState(data.entityId, data.state); } catch(e) {}
+                    }
+                    // Req 16.6: If no callback registered, silently discard
+                } else if (data.type === '__message') {
+                    // Targeted peer message
+                    var msgCallback = this._onMessage.get(data.msgType);
+                    if (msgCallback) {
+                        try { msgCallback(peerId, data.msgType, data.data); } catch(e) {}
+                    }
+                    // Silently discard if no callback registered
+                }
+                // Ignore other internal message types (e.g., __disconnect)
+            };
+
+            /**
+             * Broadcast state to all connected peers.
+             * Req 16.1: Sends serialized state (≤1024 bytes) to all connected peers.
+             * Req 16.7: If broadcast exceeds 1024 bytes, discard and invoke error callback.
+             * Req 16.4: Rate-limited to 30/sec per peer.
+             * Req 16.5: Silently discard for disconnected peers.
+             */
+            P2PMultiplayerClass.prototype.broadcastState = function(entityId, stateObj) {
+                var message = JSON.stringify({
+                    type: '__state',
+                    entityId: entityId,
+                    state: stateObj
+                });
+
+                // Req 16.7: Check byte length using TextEncoder
+                var byteLength;
+                if (typeof TextEncoder !== 'undefined') {
+                    byteLength = new TextEncoder().encode(message).length;
+                } else {
+                    // Fallback: approximate byte length
+                    byteLength = message.length * 2;
+                }
+
+                if (byteLength > MAX_BROADCAST_BYTES) {
+                    // Req 16.7: Discard and invoke error callback
+                    if (this._onConnectionError) {
+                        try { this._onConnectionError('Broadcast state exceeds 1024 byte limit (' + byteLength + ' bytes)'); } catch(e) {}
+                    }
+                    return;
+                }
+
+                // Send to all connected peers
+                var self = this;
+                this._peers.forEach(function(peer, peerId) {
+                    // Req 16.5: Silently discard if peer not connected
+                    if (!peer.dataChannel || peer.dataChannel.readyState !== 'open') {
+                        return;
+                    }
+
+                    // Req 16.4: Rate limit check
+                    if (!self._checkRateLimit(peerId)) {
+                        return; // Drop excess messages without queuing
+                    }
+
+                    try {
+                        peer.dataChannel.send(message);
+                    } catch(e) {
+                        // Silently discard on send failure
+                    }
+                });
+            };
+
+            /**
+             * Register callback for receiving peer state updates.
+             * Req 16.2: Callback receives sender entity_id and deserialized state.
+             */
+            P2PMultiplayerClass.prototype.onPeerState = function(callback) {
+                this._onPeerState = callback;
+            };
+
+            /**
+             * Send a targeted message to a specific peer.
+             * Req 16.3: Delivers to specified peer only.
+             * Req 16.4: Rate-limited to 30/sec per peer.
+             * Req 16.5: Silently discard if peer not connected.
+             */
+            P2PMultiplayerClass.prototype.sendMessage = function(peerId, type, data) {
+                // Req 16.5: Silently discard if peer not connected
+                var peer = this._peers.get(peerId);
+                if (!peer || !peer.dataChannel || peer.dataChannel.readyState !== 'open') {
+                    return;
+                }
+
+                // Req 16.4: Rate limit check
+                if (!this._checkRateLimit(peerId)) {
+                    return; // Drop excess messages without queuing
+                }
+
+                var message = JSON.stringify({
+                    type: '__message',
+                    msgType: type,
+                    data: data
+                });
+
+                try {
+                    peer.dataChannel.send(message);
+                } catch(e) {
+                    // Silently discard on send failure
+                }
+            };
+
+            /**
+             * Register callback for receiving typed messages from peers.
+             */
+            P2PMultiplayerClass.prototype.onMessage = function(type, callback) {
+                this._onMessage.set(type, callback);
+            };
+
+            return P2PMultiplayerClass;
+        })();
+
+        var p2pMultiplayer = new P2PMultiplayer();
+
+        // --- 9. EXPOSED RUNTIME INTERFACE BRIDGE ---
+        var currentEngineState = "SPLASH"; var pythonLoop = null; var lastTime = 0;
+        window.GameEngine = {
+            set_loop: function(cb) { pythonLoop = cb; }, get_state: function() { return currentEngineState; }, set_state: function(s) { currentEngineState = s; },
+            clear_screen: function(hex) { gCtx.fillStyle = hex; gCtx.fillRect(0,0,gCanvas.width,gCanvas.height); },
+            draw_text: function(t,x,y,s,c) { gCtx.fillStyle = c; gCtx.font = "bold "+s+"px monospace"; gCtx.textAlign="left"; gCtx.fillText(t,x,y); },
+            is_btn_pressed: function(b) { return buttonLayout[b] ? buttonLayout[b].pressed : false; },
+            get_joy_x: function() { return joystickState.outputX; }, get_joy_y: function() { return joystickState.outputY; },
+            adjust_camera_yaw: function(v) { cameraYaw += v; },
+            draw_stacked_sprite: function(id, x, y, z, r) { renderPerspectiveCameraStackedSprite(gCtx, id, x, y, z, r, true); },
+            set_master_volume: function(vol) { audioSynth.setMasterVolume(vol); },
+            play_sfx: function(id, volume) { audioSynth.playSfx(id, volume); },
+            define_sfx: function(id, config) { audioSynth.defineSfx(id, config); },
+            play_music: function(pattern_id, loop) { audioSynth.playPattern(pattern_id, loop); },
+            stop_music: function() { audioSynth.stopMusic(); },
+            define_pattern: function(patternId, channels, tempo, noteData) { audioSynth.definePattern(patternId, channels, tempo, noteData); },
+            register_entity: function(id, x, y, w, h, solid) { collisionEngine.registerEntity(id, x, y, w, h, solid); },
+            unregister_entity: function(id) { collisionEngine.unregisterEntity(id); },
+            move_entity: function(entity_id, dx, dy) { return collisionEngine.resolveMovement(entity_id, dx, dy); },
+            check_overlap: function(id_a, id_b) { return collisionEngine.checkOverlap(id_a, id_b); },
+            register_trigger: function(id, x, y, w, h, event_type, payload) { collisionEngine.registerTrigger(id, x, y, w, h, event_type, payload); },
+            transition: function(type, duration, callback_name) { gameplayTemplates.startTransition(type, duration, callback_name); },
+            is_transitioning: function() { return gameplayTemplates.isTransitioning(); },
+            generate_dungeon: function(width, height, seed) { return gameplayTemplates.generateDungeon(width, height, seed); },
+            spawn_entities_in_region: function(template_id, count, region) { return gameplayTemplates.spawnEntitiesInRegion(template_id, count, region); },
+            create_combat_entity: function(id, hp, attack, defense) { gameplayTemplates.createCombatEntity(id, hp, attack, defense); },
+            calculate_damage: function(attacker_id, defender_id) { return gameplayTemplates.calculateDamage(attacker_id, defender_id); },
+            apply_damage: function(entity_id, amount) { return gameplayTemplates.applyDamage(entity_id, amount); },
+            get_combat_entity: function(id) { return gameplayTemplates.getCombatEntity(id); },
+            set_timer: function(id, duration, callback_name, repeat) { timerSystem.setTimer(id, duration, callback_name, repeat); },
+            clear_timer: function(id) { timerSystem.clearTimer(id); },
+            // P2P Multiplayer bridge (Req 15.1-15.8)
+            host_session: function(room_code) { p2pMultiplayer.hostSession(room_code); },
+            join_session: function(room_code) { p2pMultiplayer.joinSession(room_code); },
+            disconnect: function() { p2pMultiplayer.disconnect(); },
+            get_connection_state: function() { return p2pMultiplayer.getConnectionState(); },
+            on_connection_success: function(callback) { p2pMultiplayer.onConnectionSuccess(callback); },
+            on_connection_error: function(callback) { p2pMultiplayer.onConnectionError(callback); },
+            on_peer_disconnect: function(callback) { p2pMultiplayer.onPeerDisconnect(callback); },
+            // P2P State Synchronization bridge (Req 16.1-16.7)
+            broadcast_state: function(entity_id, state_obj) { p2pMultiplayer.broadcastState(entity_id, state_obj); },
+            send_message: function(peer_id, type, data) { p2pMultiplayer.sendMessage(peer_id, type, data); },
+            on_peer_state: function(callback) { p2pMultiplayer.onPeerState(callback); },
+            on_message: function(type, callback) { p2pMultiplayer.onMessage(type, callback); },
+            register_screen: function(id, enter_fn, update_fn, exit_fn) { gameplayTemplates.registerScreen(id, enter_fn, update_fn, exit_fn); },
+            switch_screen: function(id, transition_type) { gameplayTemplates.switchScreen(id, transition_type); },
+            get_current_screen: function() { return gameplayTemplates.getCurrentScreen(); },
+            play_rumble: function(ms) { if(navigator.vibrate) navigator.vibrate(ms); },
+            draw_world_map: function() {
+                var tileSize = 22;
+                ['ground', 'object'].forEach(function(layerKey) {
+                    for(var r=0; r<mapHeight; r++) {
+                        for(var c=0; c<mapWidth; c++) {
+                            var tileId = mapGrid[layerKey][r][c];
+                            if(tileId !== -1) {
+                                var wx = (c * tileSize) + tileSize/2; var wy = (r * tileSize) + tileSize/2;
+                                renderPerspectiveCameraStackedSprite(gCtx, tileId, wx, wy, 0, 0, true);
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
+        function hotSwapVirtualMachinePipeline() {
+            currentEngineState = "SPLASH";
+            document.querySelectorAll('script[type="text/python"]').forEach(function(s) { s.remove(); });
+            var s = document.createElement('script'); s.type = 'text/python'; s.text = document.getElementById('code-editor').value;
+            document.body.appendChild(s); brython();
+        }
+
+        // --- 10. HOST OPERATIONS COROUTINE SYSTEM ---
+        function runMainFrameLoop(time) {
+            requestAnimationFrame(runMainFrameLoop);
+            if(!document.getElementById('view-play').classList.contains('active')) return;
+            var dt = (time - lastTime) / 1000 || 0; lastTime = time;
+
+            // Update music sequencer each frame
+            audioSynth.updateSequencer(dt);
+
+            if(pythonLoop) pythonLoop(dt, time/1000);
+
+            // Update active screen's update_fn each frame (Req 10.6)
+            gameplayTemplates.updateScreens(dt);
+
+            // Update timer system after Python update (Req 14.1, 14.2)
+            timerSystem.updateTimers(dt);
+
+            // Update and render screen transitions over game canvas (Req 9.5: game loop continues)
+            gameplayTemplates.updateTransition(dt);
+
+            drawVirtualHardwareOverlay();
+        }
+        requestAnimationFrame(runMainFrameLoop);
+
+        // Map globally executed callback triggers cleanly
+        window.switchTab = switchTab; window.toggleApiPanel = toggleApiPanel;
+        window.saveCartToLocalStorage = saveCartToLocalStorage; window.loadCartFromLocalStorage = loadCartFromLocalStorage;
+        window.exportCartFile = exportCartFile; window.importCartFile = importCartFile;
+        window.validateCartridgeData = validateCartridgeData;
+        window.setSpriteTool = setSpriteTool; window.resizeGrid = resizeGrid; window.changeLayer = changeLayer;
+        window.pushNewStackLayer = pushNewStackLayer; window.popTopStackLayer = popTopStackLayer;
+        window.updateSelectedColorSlot = updateSelectedColorSlot; window.loadAssetToWorkspace = loadAssetToWorkspace;
+        window.saveActiveWorkspace = saveActiveWorkspace; window.createNewAssetInLibrary = createNewAssetInLibrary;
+        window.setMapTool = setMapTool; window.clearMapGrid = clearMapGrid; window.renderMapEditorCanvas = renderMapEditorCanvas;
+
+        buildPaletteUI(); renderPaintCanvas();
     </script>
 </body>
 </html>
